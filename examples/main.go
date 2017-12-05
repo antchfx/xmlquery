@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/antchfx/xquery/xml"
+	"github.com/antchfx/xmlquery"
 )
 
 func main() {

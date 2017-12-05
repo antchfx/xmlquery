@@ -1,78 +1,28 @@
-xquery
+xmlquery
 ====
-[![Build Status](https://travis-ci.org/antchfx/xquery.svg?branch=master)](https://travis-ci.org/antchfx/xquery)
-[![Coverage Status](https://coveralls.io/repos/github/antchfx/xquery/badge.svg?branch=master)](https://coveralls.io/github/antchfx/xquery?branch=master)
-[![GoDoc](https://godoc.org/github.com/antchfx/xquery?status.svg)](https://godoc.org/github.com/antchfx/xquery)
-[![Go Report Card](https://goreportcard.com/badge/github.com/antchfx/xquery)](https://goreportcard.com/report/github.com/antchfx/xquery)
+[![Build Status](https://travis-ci.org/antchfx/xmlquery.svg?branch=master)](https://travis-ci.org/antchfx/xmlquery)
+[![Coverage Status](https://coveralls.io/repos/github/antchfx/xmlquery/badge.svg?branch=master)](https://coveralls.io/github/antchfx/xmlquery?branch=master)
+[![GoDoc](https://godoc.org/github.com/antchfx/xmlquery?status.svg)](https://godoc.org/github.com/antchfx/xmlquery)
+[![Go Report Card](https://goreportcard.com/badge/github.com/antchfx/xmlquery)](https://goreportcard.com/report/github.com/antchfx/xmlquery)
 
-Golang package, lets you extract data from HTML/XML documents using XPath expression.
+xmlquery is an XML parser thats builds a read/modified DOM and supports XPath feature to extract data 
+from XML documents using XPath expression.
 
-List of supported XPath functions you can found here [XPath Package](https://github.com/antchfx/xpath).
-
-Packages of xquery
-====
-[htmlquery](https://github.com/antchfx/xquery#html-query-) - for HTML documents.
-
-[xmlquery](https://github.com/antchfx/xquery#xml-query-) - for XML documents.
+Its depend on [xpath](https://github.com/antchfx/xpath) package.
 
 Installation
 ====
 
-> go get github.com/antchfx/xquery
+    $ go get github.com/antchfx/xmlquery
 
-
-HTML Query [![GoDoc](https://godoc.org/github.com/antchfx/xquery/html?status.svg)](https://godoc.org/github.com/antchfx/xquery/html)
+Examples
 ===
-
-Extract data from HTML document.
 
 ```go
 package main
 
 import (
-	"github.com/antchfx/xpath"
-	"github.com/antchfx/xquery/html"
-)
-
-func main() {
-	// Load HTML file.
-	f, err := os.Open(`./examples/test.html`)
-	if err != nil {
-		panic(err)
-	}
-	// Parse HTML document.
-	doc, err := htmlquery.Parse(f)
-	if err != nil{
-		panic(err)
-	}
-
-	// Option 1: using xpath's expr to matches nodes.
-	expr := xpath.MustCompile("count(//div[@class='article'])")
-	fmt.Printf("%f \n", expr.Evaluate(htmlquery.CreateXPathNavigator(doc)).(float64))
-
-	expr = xpath.MustCompile("//a/@href")
-	iter := expr.Evaluate(htmlquery.CreateXPathNavigator(doc)).(*xpath.NodeIterator)
-	for iter.MoveNext() {
-		fmt.Printf("%s \n", iter.Current().Value()) // output href
-	}
-
-	// Option 2: using build-in functions Find() to matches nodes.
-	for _, n := range htmlquery.Find(doc, "//a/@href") {
-		fmt.Printf("%s \n", htmlquery.SelectAttr(n, "href")) // output href
-	}
-}
-```
-
-XML Query [![GoDoc](https://godoc.org/github.com/antchfx/xquery/xml?status.svg)](https://godoc.org/github.com/antchfx/xquery/xml)
-===
-Extract data from XML document.
-
-```go
-package main
-
-import (
-	"github.com/antchfx/xpath"
-	"github.com/antchfx/xquery/xml"
+	"github.com/antchfx/xmlquery"
 )
 
 func main() {
@@ -87,21 +37,26 @@ func main() {
 		panic(err)
 	}
 
-	// Option 1: using xpath's expr to matches nodes.
-
-	// sum all book's price via Evaluate()
-	expr, err := xpath.Compile("sum(//book/price)")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("total price: %f\n", expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64))
-
+	// Selects all the `book` elements.
 	for _, n := range xmlquery.Find(doc, "//book") {
 		fmt.Printf("%s : %s \n", n.SelectAttr("id"), xmlquery.FindOne(n, "title").InnerText())
 	}
-	
-	// Option 2: using build-in functions FindOne() to matches node.
+
+	// Selects all the `book` elements that have a "id" attribute
+	// with a value of "bk104"
 	n := xmlquery.FindOne(doc, "//book[@id='bk104']")
 	fmt.Printf("%s \n", n.OutputXML(true))
 }
+```
+
+### Evaluate an XPath expression
+
+Using `Evaluate()` to evaluates XPath expressions.
+
+```go
+expr, err := xpath.Compile("sum(//book/price)")
+if err != nil {
+	panic(err)
+}
+fmt.Printf("total price: %f\n", expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64))	
 ```
