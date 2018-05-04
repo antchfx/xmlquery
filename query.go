@@ -121,6 +121,9 @@ func (x *NodeNavigator) LocalName() string {
 }
 
 func (x *NodeNavigator) Prefix() string {
+	if x.NodeType() == xpath.AttributeNode {
+		return ""
+	}
 	return x.curr.Prefix
 }
 
