@@ -194,6 +194,17 @@ func TestMissDeclaration(t *testing.T) {
 	}
 }
 
+func TestMissingNamespace(t *testing.T) {
+	s := `<root>
+	<myns:child id="1">value 1</myns:child>
+	<myns:child id="2">value 2</myns:child>
+  </root>`
+	_, err := Parse(strings.NewReader(s))
+	if err == nil {
+		t.Fatal("err is nil, want got invalid XML document")
+	}
+}
+
 func TestTooNested(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?>
 	<!-- comment here-->

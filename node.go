@@ -3,6 +3,7 @@ package xmlquery
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -186,6 +187,11 @@ func parse(r io.Reader) (*Node, error) {
 				addChild(prev, node)
 				level = 1
 				prev = node
+			}
+			if tok.Name.Space != "" {
+				if _, found := space2prefix[tok.Name.Space]; !found {
+					return nil, errors.New("xmlquery: invalid XML document, namespace is missing")
+				}
 			}
 			node := &Node{
 				Type:         ElementNode,
