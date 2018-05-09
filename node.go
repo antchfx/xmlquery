@@ -190,7 +190,9 @@ func parse(r io.Reader) (*Node, error) {
 			}
 			// https://www.w3.org/TR/xml-names/#scoping-defaulting
 			for _, att := range tok.Attr {
-				if att.Name.Space == "xmlns" {
+				if att.Name.Local == "xmlns" {
+					space2prefix[att.Value] = ""
+				} else if att.Name.Space == "xmlns" {
 					space2prefix[att.Value] = att.Name.Local
 				}
 			}

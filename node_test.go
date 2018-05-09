@@ -73,7 +73,7 @@ func TestLoadURL(t *testing.T) {
 func TestNamespaceURL(t *testing.T) {
 	s := `
 <?xml version="1.0"?>
-<rss version="2.0" xmlns:dc="https://purl.org/dc/elements/1.1/">
+<rss version="2.0" xmlns="http://www.example.com/" xmlns:dc="https://purl.org/dc/elements/1.1/">
 <!-- author -->
 <dc:creator><![CDATA[Richard Lawler]]></dc:creator>
 <dc:identifier>21|22021348</dc:identifier>
