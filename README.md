@@ -5,58 +5,138 @@ xmlquery
 [![GoDoc](https://godoc.org/github.com/antchfx/xmlquery?status.svg)](https://godoc.org/github.com/antchfx/xmlquery)
 [![Go Report Card](https://goreportcard.com/badge/github.com/antchfx/xmlquery)](https://goreportcard.com/report/github.com/antchfx/xmlquery)
 
-xmlquery is an XML parser thats builds a read/modified DOM and supports XPath feature to extract data 
-from XML documents using XPath expression.
+Overview
+===
 
-Its depend on [xpath](https://github.com/antchfx/xpath) package.
+**xmlquery** is an XML Parser and XPath package, supports extract data or evaluate from XML documents using XPath expression.
+
+[htmlquery](https://github.com/antchfx/htmlquery) is similar to this package, but supports HTML document using XPath expression.
 
 Installation
 ====
 
-    $ go get github.com/antchfx/xmlquery
+$ go get github.com/antchfx/xmlquery
 
-Examples
+Dependencies
+====
+
+- [xpath](https://github.com/antchfx/xpath)
+
+Getting Started
 ===
 
+#### Parse a XML from URL
+
 ```go
-package main
+doc, _ := xmlquery.LoadURL("http://www.example.com/sitemap.xml")
+fmt.Println(doc.OutputXML(false))
+```
 
-import (
-	"github.com/antchfx/xmlquery"
-)
+#### Parse a XML from string
 
-func main() {
-	// Load XML document from file.
-	f, err := os.Open(`./examples/test.xml`)
-	if err != nil {
-		panic(err)
-	}
-	// Parse XML document.
-	doc, err := xmlquery.Parse(f)
-	if err != nil{
-		panic(err)
-	}
+```go
+s := `<?xml version="1.0" encoding="utf-8"?><rss version="2.0"></rss>`
+doc, _ := xmlquery.Parse(strings.NewReader(s))
+fmt.Println(doc.OutputXML(false))
+```
 
-	// Selects all the `book` elements.
-	for _, n := range xmlquery.Find(doc, "//book") {
-		fmt.Printf("%s : %s \n", n.SelectAttr("id"), xmlquery.FindOne(n, "title").InnerText())
-	}
+#### Select all elements
 
-	// Selects all the `book` elements that have a "id" attribute
-	// with a value of "bk104"
-	n := xmlquery.FindOne(doc, "//book[@id='bk104']")
-	fmt.Printf("%s \n", n.OutputXML(true))
+```go
+doc := loadTestXML()
+for _, n := range xmlquery.Find(doc, "//book") {
+	fmt.Printf(n.OutputXML(true))
 }
 ```
 
-### Evaluate an XPath expression
-
-Using `Evaluate()` to evaluates XPath expressions.
+#### Select first of all matched elements
 
 ```go
+doc := loadTestXML()
+n := xmlquery.FindOne(doc, "//book")
+fmt.Printf(n.OutputXML(true))
+```
+
+#### Select children element of current element
+
+```go
+doc := loadTestXML()
+n := xmlquery.FindOne(doc, "//book")
+c1 := xmlquery.FindOne(n, "/author")
+c2 := n.SelectElement("author")
+fmt.Println(c1 == c2)
+```
+
+#### Select all elements with "id" attribute conditions
+
+```go
+doc := loadTestXML()
+for _, n := range xmlquery.Find(doc, "//book[@id='bk104']") {
+	fmt.Printf(n.OutputXML(true))
+}
+```
+
+#### Gets element text or attribute value
+
+```go
+doc := loadTestXML()
+n := xmlquery.FindOne(doc, "//book")
+fmt.Println(n.InnerText())
+fmt.Println(n.SelectAttr("id"))
+```
+
+#### Evaluate total prices
+
+```go
+doc := loadTestXML()
 expr, err := xpath.Compile("sum(//book/price)")
-if err != nil {
-	panic(err)
-}
-fmt.Printf("total price: %f\n", expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64))	
+price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
+fmt.Printf("total price: %f\n", price)
 ```
+
+#### Evaluate element count
+
+```go
+doc := loadTestXML()
+expr, err := xpath.Compile("count(//book)")
+price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
+fmt.Printf("total count is %f\n", price)
+```
+
+#### Create XML document
+
+```go
+doc := &xmlquery.Node{
+	Type: xmlquery.DeclarationNode,
+	Data: "xml",
+	Attr: []xml.Attr{
+		xml.Attr{Name: xml.Name{Local: "version"}, Value: "1.0"},
+	},
+}
+root := &xmlquery.Node{
+	Data: "rss",
+	Type: xmlquery.ElementNode,
+}
+doc.FirstChild = root
+channel := &xmlquery.Node{
+	Data: "channel",
+	Type: xmlquery.ElementNode,
+}
+root.FirstChild = channel
+title := &xmlquery.Node{
+	Data: "title",
+	Type: xmlquery.ElementNode,
+}
+title_text := &xmlquery.Node{
+	Data: "W3Schools Home Page",
+	Type: xmlquery.TextNode,
+}
+title.FirstChild = title_text
+channel.FirstChild = title
+fmt.Println(doc.OutputXML(true))
+// <?xml version="1.0"?><rss><channel><title>W3Schools Home Page</title></channel></rss>
+```
+
+Questions
+===
+If you have any questions, create an issue and welcome to contribute.
