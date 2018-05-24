@@ -8,102 +8,80 @@ xmlquery
 Overview
 ===
 
-**xmlquery** is an XML Parser and XPath package, supports extract data or evaluate from XML documents using XPath expression.
-
-[htmlquery](https://github.com/antchfx/htmlquery) is similar to this package, but supports HTML document using XPath expression.
+xmlquery is an XPath query package for XML document, lets you extract data or evaluate from XML documents through an XPath expression.
 
 Installation
 ====
 
-$ go get github.com/antchfx/xmlquery
-
-Dependencies
-====
-
-- [xpath](https://github.com/antchfx/xpath)
+> $ go get github.com/antchfx/xmlquery
 
 Getting Started
 ===
 
-#### Parse a XML from URL
+#### Parse a XML from URL.
 
 ```go
-doc, _ := xmlquery.LoadURL("http://www.example.com/sitemap.xml")
-fmt.Println(doc.OutputXML(false))
+doc, err := xmlquery.LoadURL("http://www.example.com/sitemap.xml")
 ```
 
-#### Parse a XML from string
+#### Parse a XML from string.
 
 ```go
 s := `<?xml version="1.0" encoding="utf-8"?><rss version="2.0"></rss>`
-doc, _ := xmlquery.Parse(strings.NewReader(s))
-fmt.Println(doc.OutputXML(false))
+doc, err := xmlquery.Parse(strings.NewReader(s))
 ```
 
-#### Select all elements
+#### Parse a XML from io.Reader.
 
 ```go
-doc := loadTestXML()
-for _, n := range xmlquery.Find(doc, "//book") {
-	fmt.Printf(n.OutputXML(true))
-}
+f, err := os.Open("../books.xml")
+doc, err := xmlquery.Parse(f)
 ```
 
-#### Select first of all matched elements
+#### Find authors of all books in the bookstore.
 
 ```go
-doc := loadTestXML()
-n := xmlquery.FindOne(doc, "//book")
-fmt.Printf(n.OutputXML(true))
+list := xmlquery.Find(doc, "//book//author")
+// or
+list := xmlquery.Find(doc, "//author")
 ```
 
-#### Select children element of current element
+#### Find first book.
 
 ```go
-doc := loadTestXML()
-n := xmlquery.FindOne(doc, "//book")
-c1 := xmlquery.FindOne(n, "/author")
-c2 := n.SelectElement("author")
-fmt.Println(c1 == c2)
+book := xmlquery.FindOne(doc, "//book")
+// or
+book := xmlquery.FindOne(doc, "//book[1]")
 ```
 
-#### Select all elements with "id" attribute conditions
+#### Find all books with id is bk104.
 
 ```go
-doc := loadTestXML()
-for _, n := range xmlquery.Find(doc, "//book[@id='bk104']") {
-	fmt.Printf(n.OutputXML(true))
-}
+list := xmlquery.Find(doc, "//book[@id='bk104']")
 ```
 
-#### Gets element text or attribute value
+#### Find all books price less than 5.
 
 ```go
-doc := loadTestXML()
-n := xmlquery.FindOne(doc, "//book")
-fmt.Println(n.InnerText())
-fmt.Println(n.SelectAttr("id"))
+list := xmlquery.Find(doc, "//book[price<5]")
 ```
 
-#### Evaluate total prices
+#### Evaluate all books prices.
 
 ```go
-doc := loadTestXML()
 expr, err := xpath.Compile("sum(//book/price)")
 price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
 fmt.Printf("total price: %f\n", price)
 ```
 
-#### Evaluate element count
+#### Evaluate books count.
 
 ```go
-doc := loadTestXML()
 expr, err := xpath.Compile("count(//book)")
 price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
-fmt.Printf("total count is %f\n", price)
 ```
 
-#### Create XML document
+#### Create XML document.
 
 ```go
 doc := &xmlquery.Node{
@@ -136,6 +114,51 @@ channel.FirstChild = title
 fmt.Println(doc.OutputXML(true))
 // <?xml version="1.0"?><rss><channel><title>W3Schools Home Page</title></channel></rss>
 ```
+
+Quick Tutorial
+===
+
+```go
+func main(){
+	s := `<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+  <title>W3Schools Home Page</title>
+  <link>https://www.w3schools.com</link>
+  <description>Free web building tutorials</description>
+  <item>
+    <title>RSS Tutorial</title>
+    <link>https://www.w3schools.com/xml/xml_rss.asp</link>
+    <description>New RSS tutorial on W3Schools</description>
+  </item>
+  <item>
+    <title>XML Tutorial</title>
+    <link>https://www.w3schools.com/xml</link>
+    <description>New XML tutorial on W3Schools</description>
+  </item>
+</channel>
+</rss>`
+
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		panic(err)
+	}
+	channel := FindOne(doc, "//channel")
+	fmt.Printf("title: %s\n", channel.SelectElement("title").InnerText())
+	fmt.Printf("link: %s\n", channel.SelectElement("link").InnerText())
+	for i, n := range Find(doc, "//item") {
+		fmt.Printf("#%d %s\n", i, n.SelectElement("title"))
+	}
+}
+```
+
+List of supported XPath query packages
+===
+|Name |Description |
+|--------------------------|----------------|
+|[htmlquery](https://github.com/antchfx/htmlquery) | XPath query package for the HTML document|
+|[xmlquery](https://github.com/antchfx/xmlquery) | XPath query package for the XML document|
+|[jsonquery](https://github.com/antchfx/jsonquery) | XPath query package for the JSON document|
 
 Questions
 ===
