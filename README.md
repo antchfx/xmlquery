@@ -8,7 +8,7 @@ xmlquery
 Overview
 ===
 
-xmlquery is an XPath query package for XML document, lets you extract data or evaluate from XML documents through an XPath expression.
+xmlquery is an XPath query package for XML document, lets you extract data or evaluate from XML documents by an XPath expression.
 
 Installation
 ====
@@ -46,12 +46,10 @@ list := xmlquery.Find(doc, "//book//author")
 list := xmlquery.Find(doc, "//author")
 ```
 
-#### Find first book.
+#### Find the second book.
 
 ```go
-book := xmlquery.FindOne(doc, "//book")
-// or
-book := xmlquery.FindOne(doc, "//book[1]")
+book := xmlquery.FindOne(doc, "//book[2]")
 ```
 
 #### Find all books with id is bk104.
@@ -60,13 +58,13 @@ book := xmlquery.FindOne(doc, "//book[1]")
 list := xmlquery.Find(doc, "//book[@id='bk104']")
 ```
 
-#### Find all books price less than 5.
+#### Find all books that price less than 5.
 
 ```go
 list := xmlquery.Find(doc, "//book[price<5]")
 ```
 
-#### Evaluate all books prices.
+#### Evaluate the total price of all books.
 
 ```go
 expr, err := xpath.Compile("sum(//book/price)")
@@ -74,7 +72,7 @@ price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
 fmt.Printf("total price: %f\n", price)
 ```
 
-#### Evaluate books count.
+#### Evaluate the number of all books element.
 
 ```go
 expr, err := xpath.Compile("count(//book)")
