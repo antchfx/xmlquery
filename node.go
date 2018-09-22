@@ -28,6 +28,8 @@ const (
 	TextNode
 	// CommentNode a comment (for example, <!-- my comment --> ).
 	CommentNode
+	// AttributeNode is an attribute of element.
+	AttributeNode
 )
 
 // A Node consists of a NodeType and some Data (tag name for

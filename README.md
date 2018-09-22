@@ -1,3 +1,5 @@
+This is a dev branch, goal is to support node attribute selection like '//a/@href'. more about information See [#3](https://github.com/antchfx/xmlquery/issues/3). Please feedback, if you have any problem.
+
 xmlquery
 ====
 [![Build Status](https://travis-ci.org/antchfx/xmlquery.svg?branch=master)](https://travis-ci.org/antchfx/xmlquery)
