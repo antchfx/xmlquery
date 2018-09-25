@@ -52,6 +52,12 @@ list := xmlquery.Find(doc, "//author")
 book := xmlquery.FindOne(doc, "//book[2]")
 ```
 
+#### Find all book elements and only get `id` attribute self. (New Feature)
+
+```go
+list := xmlquery.Find(doc,"//book/@id")
+```
+
 #### Find all books with id is bk104.
 
 ```go
