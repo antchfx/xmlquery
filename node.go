@@ -75,7 +75,11 @@ func outputXML(buf *bytes.Buffer, n *Node) {
 	if n.Type == DeclarationNode {
 		buf.WriteString("<?" + n.Data)
 	} else {
-		buf.WriteString("<" + n.Data)
+		if n.Prefix == "" {
+			buf.WriteString("<" + n.Data)
+		}else{
+			buf.WriteString("<" + n.Prefix + ":" + n.Data)
+		}
 	}
 
 	for _, attr := range n.Attr {
@@ -94,7 +98,11 @@ func outputXML(buf *bytes.Buffer, n *Node) {
 		outputXML(buf, child)
 	}
 	if n.Type != DeclarationNode {
-		buf.WriteString(fmt.Sprintf("</%s>", n.Data))
+		if n.Prefix == "" {
+			buf.WriteString(fmt.Sprintf("</%s>", n.Data))
+		}else{
+			buf.WriteString(fmt.Sprintf("</%s:%s>", n.Prefix, n.Data))
+		}
 	}
 }
 
