@@ -60,8 +60,20 @@ func TestXPath(t *testing.T) {
 	FindEach(doc, "//book", func(i int, n *Node) {
 		c++
 	})
-	if c != len(Find(doc, "//book")) {
+	l := len(Find(doc, "//book"))
+	if c != l {
 		t.Fatal("count(//book) != 3")
+	}
+	c = 0
+	FindEachWithBreak(doc, "//book", func(i int, n *Node) bool {
+		if c == l - 1 {
+			return false
+		}
+		c++
+		return true
+	})
+	if c != l - 1 {
+		t.Fatal("FindEachWithBreak failed to stop.")
 	}
 	node := FindOne(doc, "//book[1]")
 	if node.SelectAttr("id") != "bk101" {
