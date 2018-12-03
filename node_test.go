@@ -306,3 +306,14 @@ func TestOutputXMLWithNamespacePrefix(t *testing.T) {
 		t.Fatal("xml document missing some characters")
 	}
 }
+
+func TestAttributeWithNamespace(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8"?><root xmlns:n1="http://www.w3.org">
+   <good a="1" b="2" />
+   <good a="1" n1:a="2" /></root>`
+	doc, _ := Parse(strings.NewReader(s))
+	n := FindOne(doc, "//good[@n1:a='2']")
+	if n == nil {
+		t.Fatal("n is nil")
+	}
+}
