@@ -68,8 +68,14 @@ func (n *Node) InnerText() string {
 }
 
 func outputXML(buf *bytes.Buffer, n *Node) {
-	if n.Type == TextNode || n.Type == CommentNode {
+	if n.Type == TextNode {
 		xml.EscapeText(buf, []byte(strings.TrimSpace(n.Data)))
+		return
+	}
+	if n.Type == CommentNode {
+		buf.WriteString("<!--")
+		buf.WriteString(n.Data)
+		buf.WriteString("-->")
 		return
 	}
 	if n.Type == DeclarationNode {
@@ -258,6 +264,8 @@ func parse(r io.Reader) (*Node, error) {
 				addSibling(prev, node)
 			} else if level > prev.level {
 				addChild(prev, node)
+			} else if level < prev.level {
+				addSibling(prev.Parent, node)
 			}
 		case xml.ProcInst: // Processing Instruction
 			if prev.Type != DeclarationNode {
