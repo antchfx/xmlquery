@@ -317,3 +317,30 @@ func TestAttributeWithNamespace(t *testing.T) {
 		t.Fatal("n is nil")
 	}
 }
+
+func TestOutputXMLWithCommentNode(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?>
+	<!-- Students grades are updated bi-monthly -->
+	<class_list>
+		<student>
+			<name>Robert</name>
+			<grade>A+</grade>
+		</student>
+	<!--
+		<student>
+			<name>Lenard</name>
+			<grade>A-</grade>
+		</student> 
+	-->
+	</class_list>`
+	doc, _ := Parse(strings.NewReader(s))
+	t.Log(doc.OutputXML(true))
+	if e, g := "<!-- Students grades are updated bi-monthly -->", doc.OutputXML(true); strings.Index(g, e) == -1 {
+		t.Fatal("missing some comment-node.")
+	}
+	n := FindOne(doc, "//class_list")
+	t.Log(n.OutputXML(false))
+	if e, g := "<name>Lenard</name>", n.OutputXML(false); strings.Index(g, e) == -1 {
+		t.Fatal("missing some comment-node")
+	}
+}
