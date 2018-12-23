@@ -13,6 +13,9 @@ xmlquery is an XPath query package for XML document, lets you extract data or ev
 Change Logs
 ===
 
+**2018-12-23**
+* added XML output will including comment node. [#9]
+
 **2018-12-03**
  * added support attribute name with namespace prefix and XML output. [#6](https://github.com/antchfx/xmlquery/issues/6)
 
