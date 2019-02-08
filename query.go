@@ -96,32 +96,21 @@ func FindOne(top *Node, expr string) *Node {
 }
 
 // FindEach searches the html.Node and calls functions cb.
+// Important: this method has deprecated, recommend use for .. = range Find(){}.
 func FindEach(top *Node, expr string, cb func(int, *Node)) {
-	exp, err := xpath.Compile(expr)
-	if err != nil {
-		panic(err)
-	}
-	t := exp.Select(CreateXPathNavigator(top))
-	var i int
-	for t.MoveNext() {
-		cb(i, getCurrentNode(t))
-		i++
+	for i, n := range Find(top, expr) {
+		cb(i, n)
 	}
 }
 
 // FindEachWithBreak functions the same as FindEach but allows you
 // to break the loop by returning false from your callback function, cb.
+// Important: this method has deprecated, recommend use for .. = range Find(){}.
 func FindEachWithBreak(top *Node, expr string, cb func(int, *Node) bool) {
-	exp, err := xpath.Compile(expr)
-	if err != nil {
-		panic(err)
-	}
-	t := exp.Select(CreateXPathNavigator(top))
-	var i int
-	cont := true
-	for t.MoveNext() && cont {
-		cont = cb(i, getCurrentNode(t))
-		i++
+	for i, n := range Find(top, expr) {
+		if !cb(i, n) {
+			break
+		}
 	}
 }
 
