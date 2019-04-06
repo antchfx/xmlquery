@@ -235,17 +235,17 @@ func TestTooNested(t *testing.T) {
 	if aaa == nil {
 		t.Fatal("AAA node not exists")
 	}
-	ccc := aaa.LastChild
+	ccc := aaa.LastChild.PrevSibling
 	if ccc.Data != "CCC" {
 		t.Fatalf("expected node is CCC,but got %s", ccc.Data)
 	}
-	bbb := ccc.PrevSibling
+	bbb := ccc.PrevSibling.PrevSibling
 	if bbb.Data != "BBB" {
 		t.Fatalf("expected node is bbb,but got %s", bbb.Data)
 	}
 	ddd := findNode(bbb, "DDD")
 	testNode(t, ddd, "DDD")
-	testNode(t, ddd.LastChild, "CCC")
+	testNode(t, ddd.LastChild.PrevSibling, "CCC")
 }
 
 func TestSelectElement(t *testing.T) {

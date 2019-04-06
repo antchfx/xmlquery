@@ -257,6 +257,11 @@ func parse(r io.Reader) (*Node, error) {
 				addSibling(prev, node)
 			} else if level > prev.level {
 				addChild(prev, node)
+			} else if level < prev.level {
+				for i := prev.level - level; i > 1; i-- {
+					prev = prev.Parent
+				}
+				addSibling(prev.Parent, node)
 			}
 		case xml.Comment:
 			node := &Node{Type: CommentNode, Data: string(tok), level: level}
