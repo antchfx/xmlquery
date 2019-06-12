@@ -67,9 +67,26 @@ func (n *Node) InnerText() string {
 	return buf.String()
 }
 
-func outputXML(buf *bytes.Buffer, n *Node) {
+func (n *Node) sanitizedData(preserveSpaces bool) string {
+	if preserveSpaces {
+		return n.Data
+	}
+	return strings.TrimSpace(n.Data)
+}
+
+func calculatePreserveSpaces(n *Node, pastValue bool) bool {
+	if attr := n.SelectAttr("xml:space"); attr == "preserve" {
+		return true
+	} else if attr == "default" {
+		return false
+	}
+	return pastValue
+}
+
+func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
+	preserveSpaces = calculatePreserveSpaces(n, preserveSpaces)
 	if n.Type == TextNode {
-		xml.EscapeText(buf, []byte(strings.TrimSpace(n.Data)))
+		xml.EscapeText(buf, []byte(n.sanitizedData(preserveSpaces)))
 		return
 	}
 	if n.Type == CommentNode {
@@ -101,7 +118,7 @@ func outputXML(buf *bytes.Buffer, n *Node) {
 		buf.WriteString(">")
 	}
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		outputXML(buf, child)
+		outputXML(buf, child, preserveSpaces)
 	}
 	if n.Type != DeclarationNode {
 		if n.Prefix == "" {
@@ -116,10 +133,10 @@ func outputXML(buf *bytes.Buffer, n *Node) {
 func (n *Node) OutputXML(self bool) string {
 	var buf bytes.Buffer
 	if self {
-		outputXML(&buf, n)
+		outputXML(&buf, n, false)
 	} else {
 		for n := n.FirstChild; n != nil; n = n.NextSibling {
-			outputXML(&buf, n)
+			outputXML(&buf, n, false)
 		}
 	}
 

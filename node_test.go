@@ -344,3 +344,79 @@ func TestOutputXMLWithCommentNode(t *testing.T) {
 		t.Fatal("missing some comment-node")
 	}
 }
+
+func TestOutputXMLWithSpaceParent(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?>
+	<class_list>
+		<student xml:space="preserve">
+			<name> Robert </name>
+			<grade>A+</grade>
+		</student>
+	</class_list>`
+	doc, _ := Parse(strings.NewReader(s))
+	t.Log(doc.OutputXML(true))
+
+	n := FindOne(doc, "/class_list/student/name")
+	expected := "<name> Robert </name>"
+	if g := doc.OutputXML(true); strings.Index(g, expected) == -1 {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
+	}
+	t.Log(n.OutputXML(false))
+}
+
+func TestOutputXMLWithSpaceDirect(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?>
+	<class_list>
+		<student>
+			<name xml:space="preserve"> Robert </name>
+			<grade>A+</grade>
+		</student>
+	</class_list>`
+	doc, _ := Parse(strings.NewReader(s))
+	t.Log(doc.OutputXML(true))
+
+	n := FindOne(doc, "/class_list/student/name")
+	expected := `<name xml:space="preserve"> Robert </name>`
+	if g := doc.OutputXML(false); strings.Index(g, expected) == -1 {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
+	}
+	t.Log(n.OutputXML(false))
+}
+
+func TestOutputXMLWithSpaceOverwrittenToPreserve(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?>
+	<class_list>
+		<student xml:space="default">
+			<name xml:space="preserve"> Robert </name>
+			<grade>A+</grade>
+		</student>
+	</class_list>`
+	doc, _ := Parse(strings.NewReader(s))
+	t.Log(doc.OutputXML(true))
+
+	n := FindOne(doc, "/class_list/student")
+	expected := `<name xml:space="preserve"> Robert </name>`
+	if g := n.OutputXML(false); strings.Index(g, expected) == -1 {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
+	}
+	t.Log(n.OutputXML(false))
+}
+
+func TestOutputXMLWithSpaceOverwrittenToDefault(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?>
+	<class_list>
+		<student xml:space="preserve">
+			<name xml:space="default"> Robert </name>
+			<grade>A+</grade>
+		</student>
+	</class_list>`
+	doc, _ := Parse(strings.NewReader(s))
+	t.Log(doc.OutputXML(true))
+
+	n := FindOne(doc, "/class_list/student")
+	expected := `<name xml:space="default">Robert</name>`
+	if g := doc.OutputXML(false); strings.Index(g, expected) == -1 {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
+	}
+	t.Log(n.OutputXML(false))
+}
