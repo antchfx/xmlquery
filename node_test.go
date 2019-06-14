@@ -1,6 +1,7 @@
 package xmlquery
 
 import (
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -361,6 +362,11 @@ func TestOutputXMLWithSpaceParent(t *testing.T) {
 	if g := doc.OutputXML(true); strings.Index(g, expected) == -1 {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
+
+	output := html.UnescapeString(doc.OutputXML(true))
+	if strings.Contains(output, "\n") {
+		t.Errorf("the outputted xml contains newlines")
+	}
 	t.Log(n.OutputXML(false))
 }
 
@@ -379,6 +385,11 @@ func TestOutputXMLWithSpaceDirect(t *testing.T) {
 	expected := `<name xml:space="preserve"> Robert </name>`
 	if g := doc.OutputXML(false); strings.Index(g, expected) == -1 {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
+	}
+
+	output := html.UnescapeString(doc.OutputXML(true))
+	if strings.Contains(output, "\n") {
+		t.Errorf("the outputted xml contains newlines")
 	}
 	t.Log(n.OutputXML(false))
 }
@@ -399,6 +410,11 @@ func TestOutputXMLWithSpaceOverwrittenToPreserve(t *testing.T) {
 	if g := n.OutputXML(false); strings.Index(g, expected) == -1 {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
+
+	output := html.UnescapeString(doc.OutputXML(true))
+	if strings.Contains(output, "\n") {
+		t.Errorf("the outputted xml contains newlines")
+	}
 	t.Log(n.OutputXML(false))
 }
 
@@ -417,6 +433,11 @@ func TestOutputXMLWithSpaceOverwrittenToDefault(t *testing.T) {
 	expected := `<name xml:space="default">Robert</name>`
 	if g := doc.OutputXML(false); strings.Index(g, expected) == -1 {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
+	}
+
+	output := html.UnescapeString(doc.OutputXML(true))
+	if strings.Contains(output, "\n") {
+		t.Errorf("the outputted xml contains newlines")
 	}
 	t.Log(n.OutputXML(false))
 }

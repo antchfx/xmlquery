@@ -69,7 +69,7 @@ func (n *Node) InnerText() string {
 
 func (n *Node) sanitizedData(preserveSpaces bool) string {
 	if preserveSpaces {
-		return n.Data
+		return strings.Trim(n.Data, "\n\t")
 	}
 	return strings.TrimSpace(n.Data)
 }
