@@ -81,12 +81,20 @@ func Find(top *Node, expr string) []*Node {
 }
 
 // FindOne searches the Node that matches by the specified XPath expr,
-// and returns first element of matched.
+// and returns first element matched.
+// Panics if expr is invalid.
 func FindOne(top *Node, expr string) *Node {
 	exp, err := xpath.Compile(expr)
 	if err != nil {
 		panic(err)
 	}
+
+	return FindOneWithExpression(exp, top)
+}
+
+// FindOneWithExpression searches the top Node by the specified XPath expr
+// and returns the first element matched.
+func FindOneWithExpression(exp *xpath.Expr, top *Node) *Node {
 	t := exp.Select(CreateXPathNavigator(top))
 	var elem *Node
 	if t.MoveNext() {
