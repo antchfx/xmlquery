@@ -66,13 +66,49 @@ func getCurrentNode(it *xpath.NodeIterator) *Node {
 	return n.curr
 }
 
-// Find searches the Node that matches by the specified XPath expr.
+// Find is like QueryAll but it will panics if the `expr` is not a
+// valid XPath expression. See `QueryAll()` function.
 func Find(top *Node, expr string) []*Node {
 	exp, err := xpath.Compile(expr)
 	if err != nil {
 		panic(err)
 	}
-	t := exp.Select(CreateXPathNavigator(top))
+	return QuerySelectorAll(top, exp)
+}
+
+// QueryAll searches the XML Node that matches by the specified XPath expr.
+// Return an error if the expression `expr` cannot be parsed.
+func QueryAll(top *Node, expr string) ([]*Node, error) {
+	exp, err := xpath.Compile(expr)
+	if err != nil {
+		return nil, err
+	}
+	return QuerySelectorAll(top, exp), nil
+}
+
+// FindOne is like Query but it will panics if the `expr` is not a
+// valid XPath expression. See `Query()` function.
+func FindOne(top *Node, expr string) *Node {
+	exp, err := xpath.Compile(expr)
+	if err != nil {
+		panic(err)
+	}
+	return QuerySelector(top, exp)
+}
+
+// Query searches the XML Node that matches by the specified XPath expr,
+// and returns first element of matched.
+func Query(top *Node, expr string) (*Node, error) {
+	exp, err := xpath.Compile(expr)
+	if err != nil {
+		return nil, err
+	}
+	return QuerySelector(top, exp), nil
+}
+
+// QuerySelectorAll searches all of the XML Node that matches the specified XPath selectors.
+func QuerySelectorAll(top *Node, selector *xpath.Expr) []*Node {
+	t := selector.Select(CreateXPathNavigator(top))
 	var elems []*Node
 	for t.MoveNext() {
 		elems = append(elems, getCurrentNode(t))
@@ -80,19 +116,13 @@ func Find(top *Node, expr string) []*Node {
 	return elems
 }
 
-// FindOne searches the Node that matches by the specified XPath expr,
-// and returns first element of matched.
-func FindOne(top *Node, expr string) *Node {
-	exp, err := xpath.Compile(expr)
-	if err != nil {
-		panic(err)
-	}
-	t := exp.Select(CreateXPathNavigator(top))
-	var elem *Node
+// QuerySelector returns the first matched XML Node by the specified XPath selector.
+func QuerySelector(top *Node, selector *xpath.Expr) *Node {
+	t := selector.Select(CreateXPathNavigator(top))
 	if t.MoveNext() {
-		elem = getCurrentNode(t)
+		return getCurrentNode(t)
 	}
-	return elem
+	return nil
 }
 
 // FindEach searches the html.Node and calls functions cb.

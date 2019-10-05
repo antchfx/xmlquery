@@ -90,6 +90,18 @@ func TestXPathCdUp(t *testing.T) {
 	}
 }
 
+func TestInvalidXPathExpression(t *testing.T) {
+	doc := &Node{}
+	_, err := QueryAll(doc, "//a[@a==1]")
+	if err == nil {
+		t.Fatal("expected a parsed error but nil")
+	}
+	_, err = Query(doc, "//a[@a==1]")
+	if err == nil {
+		t.Fatal("expected a parsed error but nil")
+	}
+}
+
 func TestNavigator(t *testing.T) {
 	nav := &NodeNavigator{curr: doc, root: doc, attr: -1}
 	nav.MoveToChild() // New Line
