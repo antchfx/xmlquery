@@ -13,11 +13,17 @@ xmlquery is an XPath query package for XML document, lets you extract data or ev
 Change Logs
 ===
 
-**2018-12-23**
-* added XML output will including comment node. [#9](https://github.com/antchfx/xmlquery/issues/9)
+2019-10-05 
+- Add new methods that compatible with invalid XPath expression error: `QueryAll` and `Query`.
+- Add `QuerySelector` and `QuerySelectorAll` methods, supported reused your query object.
+- PR [#12](https://github.com/antchfx/xmlquery/pull/12) (Thanks @FrancescoIlario)
+- PR [#11](https://github.com/antchfx/xmlquery/pull/11) (Thanks @gjvnq)
 
-**2018-12-03**
- * added support attribute name with namespace prefix and XML output. [#6](https://github.com/antchfx/xmlquery/issues/6)
+2018-12-23
+- added XML output will including comment node. [#9](https://github.com/antchfx/xmlquery/issues/9)
+
+2018-12-03
+- added support attribute name with namespace prefix and XML output. [#6](https://github.com/antchfx/xmlquery/issues/6)
 
 Installation
 ====
@@ -26,6 +32,15 @@ Installation
 
 Getting Started
 ===
+
+### Find specified XPath query.
+
+```go
+list, err := xmlquery.QueryAll(doc, "a")
+if err != nil {
+	panic(err)
+}
+```
 
 #### Parse a XML from URL.
 
@@ -93,6 +108,20 @@ fmt.Printf("total price: %f\n", price)
 expr, err := xpath.Compile("count(//book)")
 price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
 ```
+
+FAQ
+====
+
+#### `Find()` vs `QueryAll()`, which is better?
+
+`Find` and `QueryAll` both do the same things, searches all of matched html nodes.
+The `Find` will panics if you give an error XPath query, but `QueryAll` will return an error for you.
+
+#### Can I save my query expression object for the next query?
+
+Yes, you can. We offer the `QuerySelector` and `QuerySelectorAll` methods, It will accept your query expression object.
+
+Cache a query expression object(or reused) will avoid re-compile XPath query expression, improve your query performance.
 
 #### Create XML document.
 
