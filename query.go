@@ -69,11 +69,21 @@ func getCurrentNode(it *xpath.NodeIterator) *Node {
 // Find is like QueryAll but it will panics if the `expr` is not a
 // valid XPath expression. See `QueryAll()` function.
 func Find(top *Node, expr string) []*Node {
-	exp, err := xpath.Compile(expr)
+	nodes, err := QueryAll(top, expr)
 	if err != nil {
 		panic(err)
 	}
-	return QuerySelectorAll(top, exp)
+	return nodes
+}
+
+// FindOne is like Query but it will panics if the `expr` is not a
+// valid XPath expression. See `Query()` function.
+func FindOne(top *Node, expr string) *Node {
+	node, err := Query(top, expr)
+	if err != nil {
+		panic(err)
+	}
+	return node
 }
 
 // QueryAll searches the XML Node that matches by the specified XPath expr.
@@ -84,16 +94,6 @@ func QueryAll(top *Node, expr string) ([]*Node, error) {
 		return nil, err
 	}
 	return QuerySelectorAll(top, exp), nil
-}
-
-// FindOne is like Query but it will panics if the `expr` is not a
-// valid XPath expression. See `Query()` function.
-func FindOne(top *Node, expr string) *Node {
-	exp, err := xpath.Compile(expr)
-	if err != nil {
-		panic(err)
-	}
-	return QuerySelector(top, exp)
 }
 
 // Query searches the XML Node that matches by the specified XPath expr,
