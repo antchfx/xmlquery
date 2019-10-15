@@ -107,10 +107,13 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 
 	for _, attr := range n.Attr {
 		if attr.Name.Space != "" {
-			buf.WriteString(fmt.Sprintf(` %s:%s="%s"`, attr.Name.Space, attr.Name.Local, attr.Value))
+			buf.WriteString(fmt.Sprintf(` %s:%s=`, attr.Name.Space, attr.Name.Local))
 		} else {
-			buf.WriteString(fmt.Sprintf(` %s="%s"`, attr.Name.Local, attr.Value))
+			buf.WriteString(fmt.Sprintf(` %s=`, attr.Name.Local))
 		}
+		buf.WriteByte(34) // "
+		xml.EscapeText(buf, []byte(attr.Value))
+		buf.WriteByte(34)
 	}
 	if n.Type == DeclarationNode {
 		buf.WriteString("?>")

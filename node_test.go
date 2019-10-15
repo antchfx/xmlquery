@@ -441,3 +441,15 @@ func TestOutputXMLWithSpaceOverwrittenToDefault(t *testing.T) {
 	}
 	t.Log(n.OutputXML(false))
 }
+
+func TestIllegalAttributeChars(t *testing.T) {
+	s := `<MyTag attr="If a&lt;b &amp; b&lt;c then a&lt;c, it&#39;s obvious"></MyTag>`
+	doc, _ := Parse(strings.NewReader(s))
+	e := "If a<b & b<c then a<c, it's obvious"
+	if n := FindOne(doc, "//MyTag/@attr"); n.InnerText() != e {
+		t.Fatalf("MyTag expected: %s but got: %s", e, n.InnerText())
+	}
+	if g := doc.LastChild.OutputXML(true); g != s {
+		t.Fatalf("not expected body: %s", g)
+	}
+}
