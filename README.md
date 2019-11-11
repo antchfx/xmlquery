@@ -8,10 +8,15 @@ xmlquery
 Overview
 ===
 
-xmlquery is an XPath query package for XML document, lets you extract data or evaluate from XML documents by an XPath expression.
+`xmlquery` is an XPath query package for XML document, lets you extract data or evaluate from XML documents by an XPath expression.
+
+`xmlquery` built-in the query object caching feature will caching the recently used XPATH query string. Enable caching can avoid re-compile XPath expression each query. 
 
 Change Logs
 ===
+
+2019-11-11 
+- Add XPath query caching.
 
 2019-10-05 
 - Add new methods that compatible with invalid XPath expression error: `QueryAll` and `Query`.
@@ -27,8 +32,9 @@ Change Logs
 
 Installation
 ====
-
-> $ go get github.com/antchfx/xmlquery
+```
+ $ go get github.com/antchfx/xmlquery
+```
 
 Getting Started
 ===

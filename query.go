@@ -89,7 +89,7 @@ func FindOne(top *Node, expr string) *Node {
 // QueryAll searches the XML Node that matches by the specified XPath expr.
 // Return an error if the expression `expr` cannot be parsed.
 func QueryAll(top *Node, expr string) ([]*Node, error) {
-	exp, err := xpath.Compile(expr)
+	exp, err := getQuery(expr)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func QueryAll(top *Node, expr string) ([]*Node, error) {
 // Query searches the XML Node that matches by the specified XPath expr,
 // and returns first element of matched.
 func Query(top *Node, expr string) (*Node, error) {
-	exp, err := xpath.Compile(expr)
+	exp, err := getQuery(expr)
 	if err != nil {
 		return nil, err
 	}
