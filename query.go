@@ -189,6 +189,10 @@ func (x *NodeNavigator) Prefix() string {
 	return x.curr.Prefix
 }
 
+func (x *NodeNavigator) NamespaceURL() string {
+	return x.curr.NamespaceURI
+}
+
 func (x *NodeNavigator) Value() string {
 	switch x.curr.Type {
 	case CommentNode:
