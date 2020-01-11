@@ -16,8 +16,8 @@ var DisableSelectorCache = false
 var SelectorCacheMaxEntries = 50
 
 var (
-	cacheOnce sync.Once
-	cache     *lru.Cache
+	cacheOnce  sync.Once
+	cache      *lru.Cache
 	cacheMutex sync.RWMutex
 )
 
@@ -26,7 +26,7 @@ func getQuery(expr string) (*xpath.Expr, error) {
 		return xpath.Compile(expr)
 	}
 	cacheOnce.Do(func() {
-		cache = lru.New(50)
+		cache = lru.New(SelectorCacheMaxEntries)
 	})
 	cacheMutex.RLock()
 	if v, ok := cache.Get(expr); ok {
