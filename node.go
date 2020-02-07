@@ -197,16 +197,40 @@ func LoadURL(url string) (*Node, error) {
 	return parse(resp.Body)
 }
 
-func parse(r io.Reader) (*Node, error) {
+type ParseOption func(cdg *parseConfig) error
+
+type parseConfig struct {
+	decoder      *xml.Decoder
+	doc          *Node
+	space2prefix map[string]string
+	level        int
+}
+
+func parse(r io.Reader, opts ...ParseOption) (*Node, error) {
+	var cfg = &parseConfig{
+		decoder: xml.NewDecoder(r),
+		doc:     &Node{Type: DocumentNode},
+		space2prefix: map[string]string{
+			// http://www.w3.org/XML/1998/namespace is bound by definition to the prefix xml.
+			"http://www.w3.org/XML/1998/namespace": "xml",
+		},
+		level: 0,
+	}
+	cfg.decoder.CharsetReader = charset.NewReaderLabel
+
+	for _, setOpt := range opts {
+		var errOpt = setOpt(cfg)
+		if errOpt != nil {
+			return nil, errOpt
+		}
+	}
+
 	var (
-		decoder      = xml.NewDecoder(r)
-		doc          = &Node{Type: DocumentNode}
-		space2prefix = make(map[string]string)
-		level        = 0
+		decoder      = cfg.decoder
+		doc          = cfg.doc
+		space2prefix = cfg.space2prefix
+		level        = cfg.level
 	)
-	// http://www.w3.org/XML/1998/namespace is bound by definition to the prefix xml.
-	space2prefix["http://www.w3.org/XML/1998/namespace"] = "xml"
-	decoder.CharsetReader = charset.NewReaderLabel
 	prev := doc
 	for {
 		tok, err := decoder.Token()
@@ -324,4 +348,31 @@ quit:
 // Parse returns the parse tree for the XML from the given Reader.
 func Parse(r io.Reader) (*Node, error) {
 	return parse(r)
+}
+
+// ParseWith runs the parser with provided optional configuration.
+func ParseWith(r io.Reader, opts ...ParseOption) (*Node, error) {
+	return parse(r, opts...)
+}
+
+// WithDecoder applies patch function to the XML decoder.
+func WithDecoder(patch func(dec *xml.Decoder)) ParseOption {
+	return func(cfg *parseConfig) error {
+		patch(cfg.decoder)
+		return nil
+	}
+}
+
+// WithStrictDecoder forces the strict XML parsing mode.
+func WithStrictDecoder() ParseOption {
+	return WithDecoder(func(dec *xml.Decoder) {
+		dec.Strict = true
+	})
+}
+
+// WithTolerantDecoder disables the strict XML parsing mode.
+func WithTolerantDecoder() ParseOption {
+	return WithDecoder(func(dec *xml.Decoder) {
+		dec.Strict = false
+	})
 }
