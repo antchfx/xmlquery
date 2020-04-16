@@ -209,24 +209,24 @@ func TestMissingNamespace(t *testing.T) {
 func TestTooNested(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?>
 	<!-- comment here-->
-    <AAA> 
-        <BBB> 
-            <DDD> 
-                <CCC> 
-                    <DDD/> 
-                    <EEE/> 
-                </CCC> 
-            </DDD> 
-        </BBB> 
-        <CCC> 
-            <DDD> 
-                <EEE> 
-                    <DDD> 
-                        <FFF/> 
-                    </DDD> 
-                </EEE> 
-            </DDD> 
-        </CCC> 		
+    <AAA>
+        <BBB>
+            <DDD>
+                <CCC>
+                    <DDD/>
+                    <EEE/>
+                </CCC>
+            </DDD>
+        </BBB>
+        <CCC>
+            <DDD>
+                <EEE>
+                    <DDD>
+                        <FFF/>
+                    </DDD>
+                </EEE>
+            </DDD>
+        </CCC>
      </AAA>`
 	root, err := Parse(strings.NewReader(s))
 	if err != nil {
@@ -251,14 +251,14 @@ func TestTooNested(t *testing.T) {
 
 func TestSelectElement(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?>
-    <AAA> 
+    <AAA>
         <BBB id="1"/>
-        <CCC id="2"> 
-            <DDD/>   
-        </CCC> 
-		<CCC id="3"> 
+        <CCC id="2">
             <DDD/>
-        </CCC> 
+        </CCC>
+		<CCC id="3">
+            <DDD/>
+        </CCC>
      </AAA>`
 	root, err := Parse(strings.NewReader(s))
 	if err != nil {
@@ -331,7 +331,7 @@ func TestOutputXMLWithCommentNode(t *testing.T) {
 		<student>
 			<name>Lenard</name>
 			<grade>A-</grade>
-		</student> 
+		</student>
 	-->
 	</class_list>`
 	doc, _ := Parse(strings.NewReader(s))
@@ -452,4 +452,31 @@ func TestIllegalAttributeChars(t *testing.T) {
 	if g := doc.LastChild.OutputXML(true); g != s {
 		t.Fatalf("not expected body: %s", g)
 	}
+}
+
+func TestCharData(t *testing.T) {
+	s := `
+<?xml version="1.0"?>
+<rss version="2.0" xmlns="http://www.example.com/" xmlns:dc="https://purl.org/dc/elements/1.1/">
+<dc:creator><![CDATA[Richard Lawler]]></dc:creator>
+</rss>
+	`
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	top := FindOne(doc, "//rss")
+	if top == nil {
+		t.Fatal("rss feed invalid")
+	}
+	node := FindOne(top, "dc:creator")
+	if node.Prefix != "dc" {
+		t.Fatalf("expected node prefix name is dc but is=%s", node.Prefix)
+	}
+	cdata := node.FirstChild
+	if cdata == nil || cdata.Type != CharDataNode {
+		t.Fatalf("expected cdata child, received %d", cdata.Type)
+	}
+
+	testValue(t, cdata.InnerText(), "Richard Lawler")
 }
