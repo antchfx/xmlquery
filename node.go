@@ -26,6 +26,8 @@ const (
 	ElementNode
 	// TextNode is the text content of a node.
 	TextNode
+	// CharDataNode node <![CDATA[content]]>
+	CharDataNode
 	// CommentNode a comment (for example, <!-- my comment --> ).
 	CommentNode
 	// AttributeNode is an attribute of element.
@@ -51,14 +53,13 @@ func (n *Node) InnerText() string {
 	var output func(*bytes.Buffer, *Node)
 	output = func(buf *bytes.Buffer, n *Node) {
 		switch n.Type {
-		case TextNode:
+		case TextNode, CharDataNode:
 			buf.WriteString(n.Data)
-			return
 		case CommentNode:
-			return
-		}
-		for child := n.FirstChild; child != nil; child = child.NextSibling {
-			output(buf, child)
+		default:
+			for child := n.FirstChild; child != nil; child = child.NextSibling {
+				output(buf, child)
+			}
 		}
 	}
 
@@ -85,19 +86,18 @@ func calculatePreserveSpaces(n *Node, pastValue bool) bool {
 
 func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 	preserveSpaces = calculatePreserveSpaces(n, preserveSpaces)
-	if n.Type == TextNode {
+	switch n.Type {
+	case TextNode, CharDataNode:
 		xml.EscapeText(buf, []byte(n.sanitizedData(preserveSpaces)))
 		return
-	}
-	if n.Type == CommentNode {
+	case CommentNode:
 		buf.WriteString("<!--")
 		buf.WriteString(n.Data)
 		buf.WriteString("-->")
 		return
-	}
-	if n.Type == DeclarationNode {
+	case DeclarationNode:
 		buf.WriteString("<?" + n.Data)
-	} else {
+	default:
 		if n.Prefix == "" {
 			buf.WriteString("<" + n.Data)
 		} else {
@@ -111,9 +111,9 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 		} else {
 			buf.WriteString(fmt.Sprintf(` %s=`, attr.Name.Local))
 		}
-		buf.WriteByte(34) // "
+		buf.WriteByte('"')
 		xml.EscapeText(buf, []byte(attr.Value))
-		buf.WriteByte(34)
+		buf.WriteByte('"')
 	}
 	if n.Type == DeclarationNode {
 		buf.WriteString("?>")
@@ -272,7 +272,7 @@ func parse(r io.Reader) (*Node, error) {
 		case xml.EndElement:
 			level--
 		case xml.CharData:
-			node := &Node{Type: TextNode, Data: string(tok), level: level}
+			node := &Node{Type: CharDataNode, Data: string(tok), level: level}
 			if level == prev.level {
 				addSibling(prev, node)
 			} else if level > prev.level {
