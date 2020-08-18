@@ -2,6 +2,7 @@ package xmlquery
 
 import (
 	"html"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -479,4 +480,52 @@ func TestCharData(t *testing.T) {
 	}
 
 	testValue(t, cdata.InnerText(), "Richard Lawler")
+}
+
+func TestStreamParser(t *testing.T) {
+	s := `
+	<AAA>
+		<BBB>
+			<DDD>
+            	<CCC>
+                	<DDD/>
+                    <EEE/>
+                </CCC>
+            </DDD>
+        </BBB>
+        <BBB>
+            <DDD>
+                <EEE>
+                    <DDD>
+                        <FFF/>
+                    </DDD>
+                </EEE>
+            </DDD>
+        </BBB>
+	</AAA>`
+
+	sp := CreateStreamParser(strings.NewReader(s), "/AAA/BBB/DDD")
+
+	// First `<DDD>` read
+	n, err := sp.Read()
+	if err != nil {
+		t.Error(err)
+	}
+	if n.OutputXML(true) != "<DDD><CCC><DDD></DDD><EEE></EEE></CCC></DDD>" {
+		t.Fatalf("unexpected: %s", n.OutputXML(true))
+	}
+
+	// Second `<DDD>` read
+	n, err = sp.Read()
+	if err != nil {
+		t.Error(err)
+	}
+	if n.OutputXML(true) != "<DDD><EEE><DDD><FFF></FFF></DDD></EEE></DDD>" {
+		t.Fatalf("unexpected: %s", n.OutputXML(true))
+	}
+
+	_, err = sp.Read()
+	if err != io.EOF {
+		t.Fatalf("io.EOF expected, but got %v", err)
+	}
 }

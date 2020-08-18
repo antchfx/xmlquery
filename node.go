@@ -187,6 +187,34 @@ func addSibling(sibling, n *Node) {
 	}
 }
 
+// removes a node and its subtree from the tree it is in. If the node is the root of the tree, then it's no-op.
+func remove(n *Node) {
+	if n.Parent == nil {
+		return
+	}
+
+	if n.Parent.FirstChild == n {
+		if n.Parent.LastChild == n {
+			n.Parent.FirstChild = nil
+			n.Parent.LastChild = nil
+		} else {
+			n.Parent.FirstChild = n.NextSibling
+			n.NextSibling.PrevSibling = nil
+		}
+	} else {
+		if n.Parent.LastChild == n {
+			n.Parent.LastChild = n.PrevSibling
+			n.PrevSibling.NextSibling = nil
+		} else {
+			n.PrevSibling.NextSibling = n.NextSibling
+			n.NextSibling.PrevSibling = n.PrevSibling
+		}
+	}
+	n.Parent = nil
+	n.PrevSibling = nil
+	n.NextSibling = nil
+}
+
 // LoadURL loads the XML document from the specified URL.
 func LoadURL(url string) (*Node, error) {
 	resp, err := http.Get(url)
@@ -194,56 +222,69 @@ func LoadURL(url string) (*Node, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return parse(resp.Body)
+	return Parse(resp.Body)
 }
 
-func parse(r io.Reader) (*Node, error) {
-	var (
-		decoder      = xml.NewDecoder(r)
-		doc          = &Node{Type: DocumentNode}
-		space2prefix = make(map[string]string)
-		level        = 0
-	)
+type parser struct {
+	decoder              *xml.Decoder
+	doc                  *Node
+	space2prefix         map[string]string
+	level                int
+	prev                 *Node
+	streamXPath          string
+	streamNode           *Node
+	streamNodePrev       *Node
+	streamElementCounter int
+}
+
+func createParser(r io.Reader) *parser {
+	p := &parser{
+		decoder:      xml.NewDecoder(r),
+		doc:          &Node{Type: DocumentNode},
+		space2prefix: make(map[string]string),
+		level:        0,
+	}
 	// http://www.w3.org/XML/1998/namespace is bound by definition to the prefix xml.
-	space2prefix["http://www.w3.org/XML/1998/namespace"] = "xml"
-	decoder.CharsetReader = charset.NewReaderLabel
-	prev := doc
+	p.space2prefix["http://www.w3.org/XML/1998/namespace"] = "xml"
+	p.decoder.CharsetReader = charset.NewReaderLabel
+	p.prev = p.doc
+	return p
+}
+
+func (p *parser) parse() (*Node, error) {
 	for {
-		tok, err := decoder.Token()
-		switch {
-		case err == io.EOF:
-			goto quit
-		case err != nil:
+		tok, err := p.decoder.Token()
+		if err != nil {
 			return nil, err
 		}
 
 		switch tok := tok.(type) {
 		case xml.StartElement:
-			if level == 0 {
+			if p.level == 0 {
 				// mising XML declaration
 				node := &Node{Type: DeclarationNode, Data: "xml", level: 1}
-				addChild(prev, node)
-				level = 1
-				prev = node
+				addChild(p.prev, node)
+				p.level = 1
+				p.prev = node
 			}
 			// https://www.w3.org/TR/xml-names/#scoping-defaulting
 			for _, att := range tok.Attr {
 				if att.Name.Local == "xmlns" {
-					space2prefix[att.Value] = ""
+					p.space2prefix[att.Value] = ""
 				} else if att.Name.Space == "xmlns" {
-					space2prefix[att.Value] = att.Name.Local
+					p.space2prefix[att.Value] = att.Name.Local
 				}
 			}
 
 			if tok.Name.Space != "" {
-				if _, found := space2prefix[tok.Name.Space]; !found {
+				if _, found := p.space2prefix[tok.Name.Space]; !found {
 					return nil, errors.New("xmlquery: invalid XML document, namespace is missing")
 				}
 			}
 
 			for i := 0; i < len(tok.Attr); i++ {
 				att := &tok.Attr[i]
-				if prefix, ok := space2prefix[att.Name.Space]; ok {
+				if prefix, ok := p.space2prefix[att.Name.Space]; ok {
 					att.Name.Space = prefix
 				}
 			}
@@ -251,55 +292,75 @@ func parse(r io.Reader) (*Node, error) {
 			node := &Node{
 				Type:         ElementNode,
 				Data:         tok.Name.Local,
-				Prefix:       space2prefix[tok.Name.Space],
+				Prefix:       p.space2prefix[tok.Name.Space],
 				NamespaceURI: tok.Name.Space,
 				Attr:         tok.Attr,
-				level:        level,
+				level:        p.level,
 			}
-			//fmt.Println(fmt.Sprintf("start > %s : %d", node.Data, level))
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
-			} else if level < prev.level {
-				for i := prev.level - level; i > 1; i-- {
-					prev = prev.Parent
+			//fmt.Println(fmt.Sprintf("start > %s : %d", node.Data, node.level))
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
 				}
-				addSibling(prev.Parent, node)
+				addSibling(p.prev.Parent, node)
 			}
-			prev = node
-			level++
+			// If we're in the streaming mode, we need to remember the node if it is the target node
+			// so that when we finish processing the node's EndElement, we know how/what to return to
+			// caller.
+			if p.streamXPath != "" {
+				if p.streamNode == nil {
+					if isStreamTarget(node, p.streamXPath) {
+						p.streamNode = node
+						p.streamNodePrev = p.prev
+						p.streamElementCounter = 1
+					}
+				} else {
+					p.streamElementCounter++
+				}
+			}
+			p.prev = node
+			p.level++
 		case xml.EndElement:
-			level--
-		case xml.CharData:
-			node := &Node{Type: CharDataNode, Data: string(tok), level: level}
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
-			} else if level < prev.level {
-				for i := prev.level - level; i > 1; i-- {
-					prev = prev.Parent
+			p.level--
+			if p.streamNode != nil {
+				p.streamElementCounter--
+				if p.streamElementCounter == 0 {
+					return p.streamNode, nil
 				}
-				addSibling(prev.Parent, node)
+			}
+		case xml.CharData:
+			node := &Node{Type: CharDataNode, Data: string(tok), level: p.level}
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
+				}
+				addSibling(p.prev.Parent, node)
 			}
 		case xml.Comment:
-			node := &Node{Type: CommentNode, Data: string(tok), level: level}
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
-			} else if level < prev.level {
-				for i := prev.level - level; i > 1; i-- {
-					prev = prev.Parent
+			node := &Node{Type: CommentNode, Data: string(tok), level: p.level}
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
 				}
-				addSibling(prev.Parent, node)
+				addSibling(p.prev.Parent, node)
 			}
 		case xml.ProcInst: // Processing Instruction
-			if prev.Type != DeclarationNode {
-				level++
+			if p.prev.Type != DeclarationNode {
+				p.level++
 			}
-			node := &Node{Type: DeclarationNode, Data: tok.Target, level: level}
+			node := &Node{Type: DeclarationNode, Data: tok.Target, level: p.level}
 			pairs := strings.Split(string(tok.Inst), " ")
 			for _, pair := range pairs {
 				pair = strings.TrimSpace(pair)
@@ -307,21 +368,68 @@ func parse(r io.Reader) (*Node, error) {
 					addAttr(node, pair[:i], strings.Trim(pair[i+1:], `"`))
 				}
 			}
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
 			}
-			prev = node
+			p.prev = node
 		case xml.Directive:
 		}
-
 	}
-quit:
-	return doc, nil
+}
+
+func isStreamTarget(n *Node, streamXPath string) bool {
+	// can be done more efficiently, but let's not worry about perf right now in this proof of concept.
+	xpath := ""
+	for ; n != nil && n.Type == ElementNode; n = n.Parent {
+		if n.Prefix != "" {
+			xpath = "/" + n.Prefix + ":" + n.Data + xpath
+		} else {
+			xpath = "/" + n.Data + xpath
+		}
+	}
+	return xpath == streamXPath
 }
 
 // Parse returns the parse tree for the XML from the given Reader.
 func Parse(r io.Reader) (*Node, error) {
-	return parse(r)
+	p := createParser(r)
+	for {
+		_, err := p.parse()
+		if err == io.EOF {
+			return p.doc, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+type StreamParser struct {
+	p *parser
+}
+
+func CreateStreamParser(r io.Reader, streamXPath string) *StreamParser {
+	if streamXPath == "" {
+		panic("streamXPath cannot be empty")
+	}
+	sp := &StreamParser{
+		p: createParser(r),
+	}
+	sp.p.streamXPath = streamXPath
+	return sp
+}
+
+func (sp *StreamParser) Read() (*Node, error) {
+	// Because this is a streaming read, we need to release/remove last
+	// target node from the node tree to free up memory.
+	if sp.p.streamNode != nil {
+		remove(sp.p.streamNode)
+		sp.p.prev = sp.p.streamNodePrev
+		sp.p.streamNode = nil
+		sp.p.streamNodePrev = nil
+		sp.p.streamElementCounter = 0
+	}
+	return sp.p.parse()
 }
