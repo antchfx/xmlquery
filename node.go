@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/antchfx/xpath"
 	"golang.org/x/net/html/charset"
 )
 
@@ -231,7 +232,7 @@ type parser struct {
 	space2prefix         map[string]string
 	level                int
 	prev                 *Node
-	streamXPath          string
+	streamXPath          *xpath.Expr
 	streamNode           *Node
 	streamNodePrev       *Node
 	streamElementCounter int
@@ -311,9 +312,9 @@ func (p *parser) parse() (*Node, error) {
 			// If we're in the streaming mode, we need to remember the node if it is the target node
 			// so that when we finish processing the node's EndElement, we know how/what to return to
 			// caller.
-			if p.streamXPath != "" {
+			if p.streamXPath != nil {
 				if p.streamNode == nil {
-					if isStreamTarget(node, p.streamXPath) {
+					if p.isStreamTarget() {
 						p.streamNode = node
 						p.streamNodePrev = p.prev
 						p.streamElementCounter = 1
@@ -379,17 +380,8 @@ func (p *parser) parse() (*Node, error) {
 	}
 }
 
-func isStreamTarget(n *Node, streamXPath string) bool {
-	// can be done more efficiently, but let's not worry about perf right now in this proof of concept.
-	xpath := ""
-	for ; n != nil && n.Type == ElementNode; n = n.Parent {
-		if n.Prefix != "" {
-			xpath = "/" + n.Prefix + ":" + n.Data + xpath
-		} else {
-			xpath = "/" + n.Data + xpath
-		}
-	}
-	return xpath == streamXPath
+func (p *parser) isStreamTarget() bool {
+	return QuerySelector(p.doc, p.streamXPath) != nil
 }
 
 // Parse returns the parse tree for the XML from the given Reader.
@@ -414,10 +406,14 @@ func CreateStreamParser(r io.Reader, streamXPath string) *StreamParser {
 	if streamXPath == "" {
 		panic("streamXPath cannot be empty")
 	}
+	expr, err := getQuery(streamXPath)
+	if err != nil {
+		panic(fmt.Sprintf("invalid streamXPath '%s', err: %s", streamXPath, err.Error()))
+	}
 	sp := &StreamParser{
 		p: createParser(r),
 	}
-	sp.p.streamXPath = streamXPath
+	sp.p.streamXPath = expr
 	return sp
 }
 
