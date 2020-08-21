@@ -16,7 +16,7 @@ func nodeName(n *Node) string {
 	case DocumentNode:
 		return "(ROOT)"
 	case DeclarationNode:
-		return "(DECL)"
+		return fmt.Sprintf("(DECL '%s')", n.Data)
 	case ElementNode:
 		name := fmt.Sprintf("(ELEM %s)", n.Data)
 		if n.Prefix != "" {
