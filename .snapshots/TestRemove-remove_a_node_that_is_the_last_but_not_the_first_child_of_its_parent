@@ -1,0 +1,274 @@
+{
+	"Parent": "ptr:(nil)",
+	"FirstChild": "ptr:(DECL)",
+	"LastChild": "ptr:(ELEM aaa)",
+	"PrevSibling": "ptr:(nil)",
+	"NextSibling": "ptr:(CDATA '\n\t\t')",
+	"Type": "DocumentNode",
+	"Data": "",
+	"Prefix": "",
+	"NamespaceURI": "",
+	"Attr": null,
+	"Level": 0,
+	"#children": [
+		{
+			"Parent": "ptr:(ROOT)",
+			"FirstChild": "ptr:(nil)",
+			"LastChild": "ptr:(nil)",
+			"PrevSibling": "ptr:(nil)",
+			"NextSibling": "ptr:(CDATA '\n\t\t')",
+			"Type": "DeclarationNode",
+			"Data": "xml",
+			"Prefix": "",
+			"NamespaceURI": "",
+			"Attr": [
+				{
+					"Name": {
+						"Space": "",
+						"Local": "version"
+					},
+					"Value": "1.0"
+				},
+				{
+					"Name": {
+						"Space": "",
+						"Local": "encoding"
+					},
+					"Value": "UTF-8"
+				}
+			],
+			"Level": 1,
+			"#children": []
+		},
+		{
+			"Parent": "ptr:(ROOT)",
+			"FirstChild": "ptr:(nil)",
+			"LastChild": "ptr:(nil)",
+			"PrevSibling": "ptr:(DECL)",
+			"NextSibling": "ptr:(DECL)",
+			"Type": "CharDataNode",
+			"Data": "\n\t\t",
+			"Prefix": "",
+			"NamespaceURI": "",
+			"Attr": null,
+			"Level": 1,
+			"#children": []
+		},
+		{
+			"Parent": "ptr:(ROOT)",
+			"FirstChild": "ptr:(nil)",
+			"LastChild": "ptr:(nil)",
+			"PrevSibling": "ptr:(CDATA '\n\t\t')",
+			"NextSibling": "ptr:(CDATA '\n\t\t')",
+			"Type": "DeclarationNode",
+			"Data": "xml-stylesheet",
+			"Prefix": "",
+			"NamespaceURI": "",
+			"Attr": [
+				{
+					"Name": {
+						"Space": "",
+						"Local": "type"
+					},
+					"Value": "text/xsl"
+				},
+				{
+					"Name": {
+						"Space": "",
+						"Local": "href"
+					},
+					"Value": "style.xsl"
+				}
+			],
+			"Level": 1,
+			"#children": []
+		},
+		{
+			"Parent": "ptr:(ROOT)",
+			"FirstChild": "ptr:(nil)",
+			"LastChild": "ptr:(nil)",
+			"PrevSibling": "ptr:(DECL)",
+			"NextSibling": "ptr:(COMMENT ' root comment here')",
+			"Type": "CharDataNode",
+			"Data": "\n\t\t",
+			"Prefix": "",
+			"NamespaceURI": "",
+			"Attr": null,
+			"Level": 1,
+			"#children": []
+		},
+		{
+			"Parent": "ptr:(ROOT)",
+			"FirstChild": "ptr:(nil)",
+			"LastChild": "ptr:(nil)",
+			"PrevSibling": "ptr:(CDATA '\n\t\t')",
+			"NextSibling": "ptr:(CDATA '\n\t\t')",
+			"Type": "CommentNode",
+			"Data": " root comment here",
+			"Prefix": "",
+			"NamespaceURI": "",
+			"Attr": null,
+			"Level": 1,
+			"#children": []
+		},
+		{
+			"Parent": "ptr:(ROOT)",
+			"FirstChild": "ptr:(nil)",
+			"LastChild": "ptr:(nil)",
+			"PrevSibling": "ptr:(COMMENT ' root comment here')",
+			"NextSibling": "ptr:(ELEM aaa)",
+			"Type": "CharDataNode",
+			"Data": "\n\t\t",
+			"Prefix": "",
+			"NamespaceURI": "",
+			"Attr": null,
+			"Level": 1,
+			"#children": []
+		},
+		{
+			"Parent": "ptr:(ROOT)",
+			"FirstChild": "ptr:(ELEM bbb)",
+			"LastChild": "ptr:(CDATA '\n\t\t')",
+			"PrevSibling": "ptr:(CDATA '\n\t\t')",
+			"NextSibling": "ptr:(nil)",
+			"Type": "ElementNode",
+			"Data": "aaa",
+			"Prefix": "",
+			"NamespaceURI": "",
+			"Attr": [],
+			"Level": 1,
+			"#children": [
+				{
+					"Parent": "ptr:(ELEM aaa)",
+					"FirstChild": "ptr:(CDATA '\n\t\t\t\tbbb child text\n\t\t\t\t')",
+					"LastChild": "ptr:(CDATA '\n\t\t\t')",
+					"PrevSibling": "ptr:(nil)",
+					"NextSibling": "ptr:(CDATA '\n\t\t\t')",
+					"Type": "ElementNode",
+					"Data": "bbb",
+					"Prefix": "",
+					"NamespaceURI": "",
+					"Attr": [],
+					"Level": 2,
+					"#children": [
+						{
+							"Parent": "ptr:(ELEM bbb)",
+							"FirstChild": "ptr:(nil)",
+							"LastChild": "ptr:(nil)",
+							"PrevSibling": "ptr:(nil)",
+							"NextSibling": "ptr:(ELEM ccc)",
+							"Type": "CharDataNode",
+							"Data": "\n\t\t\t\tbbb child text\n\t\t\t\t",
+							"Prefix": "",
+							"NamespaceURI": "",
+							"Attr": null,
+							"Level": 3,
+							"#children": []
+						},
+						{
+							"Parent": "ptr:(ELEM bbb)",
+							"FirstChild": "ptr:(nil)",
+							"LastChild": "ptr:(nil)",
+							"PrevSibling": "ptr:(CDATA '\n\t\t\t\tbbb child text\n\t\t\t\t')",
+							"NextSibling": "ptr:(CDATA '\n\t\t\t')",
+							"Type": "ElementNode",
+							"Data": "ccc",
+							"Prefix": "",
+							"NamespaceURI": "",
+							"Attr": [],
+							"Level": 3,
+							"#children": []
+						},
+						{
+							"Parent": "ptr:(ELEM bbb)",
+							"FirstChild": "ptr:(nil)",
+							"LastChild": "ptr:(nil)",
+							"PrevSibling": "ptr:(ELEM ccc)",
+							"NextSibling": "ptr:(nil)",
+							"Type": "CharDataNode",
+							"Data": "\n\t\t\t",
+							"Prefix": "",
+							"NamespaceURI": "",
+							"Attr": null,
+							"Level": 3,
+							"#children": []
+						}
+					]
+				},
+				{
+					"Parent": "ptr:(ELEM aaa)",
+					"FirstChild": "ptr:(nil)",
+					"LastChild": "ptr:(nil)",
+					"PrevSibling": "ptr:(ELEM bbb)",
+					"NextSibling": "ptr:(ELEM ddd)",
+					"Type": "CharDataNode",
+					"Data": "\n\t\t\t",
+					"Prefix": "",
+					"NamespaceURI": "",
+					"Attr": null,
+					"Level": 2,
+					"#children": []
+				},
+				{
+					"Parent": "ptr:(ELEM aaa)",
+					"FirstChild": "ptr:(ELEM eee)",
+					"LastChild": "ptr:(ELEM eee)",
+					"PrevSibling": "ptr:(CDATA '\n\t\t\t')",
+					"NextSibling": "ptr:(CDATA '\n\t\t')",
+					"Type": "ElementNode",
+					"Data": "ddd",
+					"Prefix": "",
+					"NamespaceURI": "",
+					"Attr": [],
+					"Level": 2,
+					"#children": [
+						{
+							"Parent": "ptr:(ELEM ddd)",
+							"FirstChild": "ptr:(ELEM fff)",
+							"LastChild": "ptr:(ELEM fff)",
+							"PrevSibling": "ptr:(nil)",
+							"NextSibling": "ptr:(nil)",
+							"Type": "ElementNode",
+							"Data": "eee",
+							"Prefix": "",
+							"NamespaceURI": "",
+							"Attr": [],
+							"Level": 3,
+							"#children": [
+								{
+									"Parent": "ptr:(ELEM eee)",
+									"FirstChild": "ptr:(nil)",
+									"LastChild": "ptr:(nil)",
+									"PrevSibling": "ptr:(nil)",
+									"NextSibling": "ptr:(nil)",
+									"Type": "ElementNode",
+									"Data": "fff",
+									"Prefix": "",
+									"NamespaceURI": "",
+									"Attr": [],
+									"Level": 4,
+									"#children": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"Parent": "ptr:(ELEM aaa)",
+					"FirstChild": "ptr:(nil)",
+					"LastChild": "ptr:(nil)",
+					"PrevSibling": "ptr:(ELEM ddd)",
+					"NextSibling": "ptr:(nil)",
+					"Type": "CharDataNode",
+					"Data": "\n\t\t",
+					"Prefix": "",
+					"NamespaceURI": "",
+					"Attr": null,
+					"Level": 2,
+					"#children": []
+				}
+			]
+		}
+	]
+}
+

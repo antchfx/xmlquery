@@ -6,6 +6,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/bradleyjkemp/cupaloy"
+	"github.com/stretchr/testify/assert"
 )
 
 func findNode(root *Node, name string) *Node {
@@ -53,6 +56,109 @@ func testValue(t *testing.T, val, expected string) {
 	if val != expected {
 		t.Fatalf("expected value is %s,but got %s", expected, val)
 	}
+}
+
+// Given a *Node, verify that all the pointers (parent, first child, next sibling, etc.) of
+// - the node itself,
+// - all its child nodes, and
+// - pointers along the silbling chain
+// are valid.
+func verifyNodePointers(t *testing.T, n *Node) {
+	if n == nil {
+		return
+	}
+	if n.FirstChild != nil {
+		assert.Equal(t, n, n.FirstChild.Parent)
+	}
+	if n.LastChild != nil {
+		assert.Equal(t, n, n.LastChild.Parent)
+	}
+
+	verifyNodePointers(t, n.FirstChild)
+	// There is no need to call verifyNodePointers(t, n.LastChild)
+	// because verifyNodePointers(t, n.FirstChild) will traverse all its
+	// siblings to the end, and if the last one isn't n.LastChild then it will fail.
+
+	parent := n.Parent // parent could be nil if n is the root of a tree.
+
+	// Verify the PrevSibling chain
+	cur, prev := n, n.PrevSibling
+	for ; prev != nil; cur, prev = prev, prev.PrevSibling {
+		assert.Equal(t, prev.Parent, parent)
+		assert.Equal(t, prev.NextSibling, cur)
+	}
+	assert.Nil(t, cur.PrevSibling)
+	assert.True(t, parent == nil || parent.FirstChild == cur)
+
+	// Verify the NextSibling chain
+	cur, next := n, n.NextSibling
+	for ; next != nil; cur, next = next, next.NextSibling {
+		assert.Equal(t, next.Parent, parent)
+		assert.Equal(t, next.PrevSibling, cur)
+	}
+	assert.Nil(t, cur.NextSibling)
+	assert.True(t, parent == nil || parent.LastChild == cur)
+}
+
+func TestRemove(t *testing.T) {
+	xml := `
+		<?xml version="1.0" encoding="UTF-8"?>
+		<?xml-stylesheet type="text/xsl" href="style.xsl"?>
+		<!-- root comment here-->
+		<aaa><bbb>
+				bbb child text
+				<ccc/>
+			</bbb>
+			<ddd><eee><fff/></eee></ddd>
+		<ggg/></aaa>`
+	parseXML := func() *Node {
+		doc, err := Parse(strings.NewReader(xml))
+		assert.NoError(t, err)
+		return doc
+	}
+
+	t.Run("remove a node that is the only child of its parent", func(t *testing.T) {
+		doc := parseXML()
+		n := FindOne(doc, "//aaa/ddd/eee")
+		assert.NotNil(t, n)
+		removeFromTree(n)
+		verifyNodePointers(t, doc)
+		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+	})
+
+	t.Run("remove a node that is the first but not the last child of its parent", func(t *testing.T) {
+		doc := parseXML()
+		n := FindOne(doc, "//aaa/bbb")
+		assert.NotNil(t, n)
+		removeFromTree(n)
+		verifyNodePointers(t, doc)
+		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+	})
+
+	t.Run("remove a node that is neither the first nor  the last child of its parent", func(t *testing.T) {
+		doc := parseXML()
+		n := FindOne(doc, "//aaa/ddd")
+		assert.NotNil(t, n)
+		removeFromTree(n)
+		verifyNodePointers(t, doc)
+		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+	})
+
+	t.Run("remove a node that is the last but not the first child of its parent", func(t *testing.T) {
+		doc := parseXML()
+		n := FindOne(doc, "//aaa/ggg")
+		assert.NotNil(t, n)
+		removeFromTree(n)
+		verifyNodePointers(t, doc)
+		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+	})
+
+	t.Run("remove on a root does nothing", func(t *testing.T) {
+		doc := parseXML()
+		removeFromTree(doc)
+		verifyNodePointers(t, doc)
+		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+	})
 }
 
 func TestLoadURL(t *testing.T) {
