@@ -6,10 +6,7 @@ go:
   - 1.13.x
 
 install:
-  - go get golang.org/x/net/html/charset
-  - go get github.com/antchfx/xpath
-  - go get github.com/mattn/goveralls
-  - go get github.com/golang/groupcache
+  - go mod download
 
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
