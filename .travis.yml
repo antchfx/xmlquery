@@ -10,8 +10,7 @@ install:
   - go get github.com/antchfx/xpath
   - go get github.com/mattn/goveralls
   - go get github.com/golang/groupcache
-  - go get github.com/bradleyjkemp/cupaloy@v2.3.0
-  - go get github.com/stretchr/testify@1.6.0
+  - go get github.com/bradleyjkemp/cupaloy
 
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci

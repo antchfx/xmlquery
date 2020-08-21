@@ -4,11 +4,11 @@ import (
 	"html"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy"
-	"github.com/stretchr/testify/assert"
 )
 
 func findNode(root *Node, name string) *Node {
@@ -52,10 +52,21 @@ func testAttr(t *testing.T, n *Node, name, expected string) {
 	t.Fatalf("not found attribute %s in the node %s", name, n.Data)
 }
 
-func testValue(t *testing.T, val, expected string) {
-	if val != expected {
-		t.Fatalf("expected value is %s,but got %s", expected, val)
+func testValue(t *testing.T, val, expected interface{}) {
+	if val == expected {
+		return
 	}
+	if reflect.DeepEqual(val, expected) {
+		return
+	}
+	t.Fatalf("expected value is %+v, but got %+v", expected, val)
+}
+
+func testTrue(t *testing.T, v bool) {
+	if v {
+		return
+	}
+	t.Fatal("expected value is true, but got false")
 }
 
 // Given a *Node, verify that all the pointers (parent, first child, next sibling, etc.) of
@@ -68,10 +79,10 @@ func verifyNodePointers(t *testing.T, n *Node) {
 		return
 	}
 	if n.FirstChild != nil {
-		assert.Equal(t, n, n.FirstChild.Parent)
+		testValue(t, n, n.FirstChild.Parent)
 	}
 	if n.LastChild != nil {
-		assert.Equal(t, n, n.LastChild.Parent)
+		testValue(t, n, n.LastChild.Parent)
 	}
 
 	verifyNodePointers(t, n.FirstChild)
@@ -84,20 +95,20 @@ func verifyNodePointers(t *testing.T, n *Node) {
 	// Verify the PrevSibling chain
 	cur, prev := n, n.PrevSibling
 	for ; prev != nil; cur, prev = prev, prev.PrevSibling {
-		assert.Equal(t, prev.Parent, parent)
-		assert.Equal(t, prev.NextSibling, cur)
+		testValue(t, prev.Parent, parent)
+		testValue(t, prev.NextSibling, cur)
 	}
-	assert.Nil(t, cur.PrevSibling)
-	assert.True(t, parent == nil || parent.FirstChild == cur)
+	testTrue(t, cur.PrevSibling == nil)
+	testTrue(t, parent == nil || parent.FirstChild == cur)
 
 	// Verify the NextSibling chain
 	cur, next := n, n.NextSibling
 	for ; next != nil; cur, next = next, next.NextSibling {
-		assert.Equal(t, next.Parent, parent)
-		assert.Equal(t, next.PrevSibling, cur)
+		testValue(t, next.Parent, parent)
+		testValue(t, next.PrevSibling, cur)
 	}
-	assert.Nil(t, cur.NextSibling)
-	assert.True(t, parent == nil || parent.LastChild == cur)
+	testTrue(t, cur.NextSibling == nil)
+	testTrue(t, parent == nil || parent.LastChild == cur)
 }
 
 func TestRemove(t *testing.T) {
@@ -113,14 +124,14 @@ func TestRemove(t *testing.T) {
 		<ggg/></aaa>`
 	parseXML := func() *Node {
 		doc, err := Parse(strings.NewReader(xml))
-		assert.NoError(t, err)
+		testTrue(t, err == nil)
 		return doc
 	}
 
 	t.Run("remove a node that is the only child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ddd/eee")
-		assert.NotNil(t, n)
+		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
 		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
@@ -129,7 +140,7 @@ func TestRemove(t *testing.T) {
 	t.Run("remove a node that is the first but not the last child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/bbb")
-		assert.NotNil(t, n)
+		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
 		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
@@ -138,7 +149,7 @@ func TestRemove(t *testing.T) {
 	t.Run("remove a node that is neither the first nor  the last child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ddd")
-		assert.NotNil(t, n)
+		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
 		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
@@ -147,7 +158,7 @@ func TestRemove(t *testing.T) {
 	t.Run("remove a node that is the last but not the first child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ggg")
-		assert.NotNil(t, n)
+		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
 		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
