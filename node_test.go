@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/bradleyjkemp/cupaloy"
 )
 
 func findNode(root *Node, name string) *Node {
@@ -111,15 +109,10 @@ func verifyNodePointers(t *testing.T, n *Node) {
 	testTrue(t, parent == nil || parent.LastChild == cur)
 }
 
-func TestRemove(t *testing.T) {
-	xml := `
-		<?xml version="1.0" encoding="UTF-8"?>
-		<?xml-stylesheet type="text/xsl" href="style.xsl"?>
-		<!-- root comment here-->
-		<aaa><bbb>
-				bbb child text
-				<ccc/>
-			</bbb>
+func TestRemoveFromTree(t *testing.T) {
+	xml := `<?procinst?>
+		<!--comment-->
+		<aaa><bbb/>
 			<ddd><eee><fff/></eee></ddd>
 		<ggg/></aaa>`
 	parseXML := func() *Node {
@@ -128,47 +121,72 @@ func TestRemove(t *testing.T) {
 		return doc
 	}
 
-	t.Run("remove a node that is the only child of its parent", func(t *testing.T) {
+	t.Run("remove an elem node that is the only child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ddd/eee")
 		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
-		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+		testValue(t, doc.OutputXML(false),
+			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd></ddd><ggg></ggg></aaa>`)
 	})
 
-	t.Run("remove a node that is the first but not the last child of its parent", func(t *testing.T) {
+	t.Run("remove an elem node that is the first but not the last child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/bbb")
 		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
-		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+		testValue(t, doc.OutputXML(false),
+			`<?procinst?><!--comment--><aaa><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
 	})
 
-	t.Run("remove a node that is neither the first nor  the last child of its parent", func(t *testing.T) {
+	t.Run("remove an elem node that is neither the first nor  the last child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ddd")
 		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
-		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+		testValue(t, doc.OutputXML(false),
+			`<?procinst?><!--comment--><aaa><bbb></bbb><ggg></ggg></aaa>`)
 	})
 
-	t.Run("remove a node that is the last but not the first child of its parent", func(t *testing.T) {
+	t.Run("remove an elem node that is the last but not the first child of its parent", func(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ggg")
 		testTrue(t, n != nil)
 		removeFromTree(n)
 		verifyNodePointers(t, doc)
-		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+		testValue(t, doc.OutputXML(false),
+			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd></aaa>`)
 	})
 
-	t.Run("remove on a root does nothing", func(t *testing.T) {
+	t.Run("remove decl node works", func(t *testing.T) {
+		doc := parseXML()
+		procInst := doc.FirstChild
+		testValue(t, procInst.Type, DeclarationNode)
+		removeFromTree(procInst)
+		verifyNodePointers(t, doc)
+		testValue(t, doc.OutputXML(false),
+			`<!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
+	})
+
+	t.Run("remove comment node works", func(t *testing.T) {
+		doc := parseXML()
+		commentNode := doc.FirstChild.NextSibling.NextSibling // First .NextSibling is an empty text node.
+		testValue(t, commentNode.Type, CommentNode)
+		removeFromTree(commentNode)
+		verifyNodePointers(t, doc)
+		testValue(t, doc.OutputXML(false),
+			`<?procinst?><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
+	})
+
+	t.Run("remove call on root does nothing", func(t *testing.T) {
 		doc := parseXML()
 		removeFromTree(doc)
 		verifyNodePointers(t, doc)
-		cupaloy.SnapshotT(t, prettyJSONMarshal(doc))
+		testValue(t, doc.OutputXML(false),
+			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
 	})
 }
 
