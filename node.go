@@ -187,6 +187,34 @@ func addSibling(sibling, n *Node) {
 	}
 }
 
+// removes a node and its subtree from the tree it is in.
+// If the node is the root of the tree, then it's no-op.
+func removeFromTree(n *Node) {
+	if n.Parent == nil {
+		return
+	}
+	if n.Parent.FirstChild == n {
+		if n.Parent.LastChild == n {
+			n.Parent.FirstChild = nil
+			n.Parent.LastChild = nil
+		} else {
+			n.Parent.FirstChild = n.NextSibling
+			n.NextSibling.PrevSibling = nil
+		}
+	} else {
+		if n.Parent.LastChild == n {
+			n.Parent.LastChild = n.PrevSibling
+			n.PrevSibling.NextSibling = nil
+		} else {
+			n.PrevSibling.NextSibling = n.NextSibling
+			n.NextSibling.PrevSibling = n.PrevSibling
+		}
+	}
+	n.Parent = nil
+	n.PrevSibling = nil
+	n.NextSibling = nil
+}
+
 // LoadURL loads the XML document from the specified URL.
 func LoadURL(url string) (*Node, error) {
 	resp, err := http.Get(url)
