@@ -17,56 +17,79 @@ func LoadURL(url string) (*Node, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return parse(resp.Body)
+	return Parse(resp.Body)
 }
 
-func parse(r io.Reader) (*Node, error) {
-	var (
-		decoder      = xml.NewDecoder(r)
-		doc          = &Node{Type: DocumentNode}
-		space2prefix = make(map[string]string)
-		level        = 0
-	)
-	// http://www.w3.org/XML/1998/namespace is bound by definition to the prefix xml.
-	space2prefix["http://www.w3.org/XML/1998/namespace"] = "xml"
-	decoder.CharsetReader = charset.NewReaderLabel
-	prev := doc
+// Parse returns the parse tree for the XML from the given Reader.
+func Parse(r io.Reader) (*Node, error) {
+	p := createParser(r)
 	for {
-		tok, err := decoder.Token()
-		switch {
-		case err == io.EOF:
-			goto quit
-		case err != nil:
+		_, err := p.parse()
+		if err == io.EOF {
+			return p.doc, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+type parser struct {
+	decoder      *xml.Decoder
+	doc          *Node
+	space2prefix map[string]string
+	level        int
+	prev         *Node
+}
+
+func createParser(r io.Reader) *parser {
+	p := &parser{
+		decoder:      xml.NewDecoder(r),
+		doc:          &Node{Type: DocumentNode},
+		space2prefix: make(map[string]string),
+		level:        0,
+	}
+	// http://www.w3.org/XML/1998/namespace is bound by definition to the prefix xml.
+	p.space2prefix["http://www.w3.org/XML/1998/namespace"] = "xml"
+	p.decoder.CharsetReader = charset.NewReaderLabel
+	p.prev = p.doc
+	return p
+}
+
+func (p *parser) parse() (*Node, error) {
+	for {
+		tok, err := p.decoder.Token()
+		if err != nil {
 			return nil, err
 		}
 
 		switch tok := tok.(type) {
 		case xml.StartElement:
-			if level == 0 {
+			if p.level == 0 {
 				// mising XML declaration
 				node := &Node{Type: DeclarationNode, Data: "xml", level: 1}
-				addChild(prev, node)
-				level = 1
-				prev = node
+				addChild(p.prev, node)
+				p.level = 1
+				p.prev = node
 			}
 			// https://www.w3.org/TR/xml-names/#scoping-defaulting
 			for _, att := range tok.Attr {
 				if att.Name.Local == "xmlns" {
-					space2prefix[att.Value] = ""
+					p.space2prefix[att.Value] = ""
 				} else if att.Name.Space == "xmlns" {
-					space2prefix[att.Value] = att.Name.Local
+					p.space2prefix[att.Value] = att.Name.Local
 				}
 			}
 
 			if tok.Name.Space != "" {
-				if _, found := space2prefix[tok.Name.Space]; !found {
+				if _, found := p.space2prefix[tok.Name.Space]; !found {
 					return nil, errors.New("xmlquery: invalid XML document, namespace is missing")
 				}
 			}
 
 			for i := 0; i < len(tok.Attr); i++ {
 				att := &tok.Attr[i]
-				if prefix, ok := space2prefix[att.Name.Space]; ok {
+				if prefix, ok := p.space2prefix[att.Name.Space]; ok {
 					att.Name.Space = prefix
 				}
 			}
@@ -74,55 +97,55 @@ func parse(r io.Reader) (*Node, error) {
 			node := &Node{
 				Type:         ElementNode,
 				Data:         tok.Name.Local,
-				Prefix:       space2prefix[tok.Name.Space],
+				Prefix:       p.space2prefix[tok.Name.Space],
 				NamespaceURI: tok.Name.Space,
 				Attr:         tok.Attr,
-				level:        level,
+				level:        p.level,
 			}
-			//fmt.Println(fmt.Sprintf("start > %s : %d", node.Data, level))
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
-			} else if level < prev.level {
-				for i := prev.level - level; i > 1; i-- {
-					prev = prev.Parent
+			//fmt.Println(fmt.Sprintf("start > %s : %d", node.Data, node.level))
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
 				}
-				addSibling(prev.Parent, node)
+				addSibling(p.prev.Parent, node)
 			}
-			prev = node
-			level++
+			p.prev = node
+			p.level++
 		case xml.EndElement:
-			level--
+			p.level--
 		case xml.CharData:
-			node := &Node{Type: CharDataNode, Data: string(tok), level: level}
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
-			} else if level < prev.level {
-				for i := prev.level - level; i > 1; i-- {
-					prev = prev.Parent
+			node := &Node{Type: CharDataNode, Data: string(tok), level: p.level}
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
 				}
-				addSibling(prev.Parent, node)
+				addSibling(p.prev.Parent, node)
 			}
 		case xml.Comment:
-			node := &Node{Type: CommentNode, Data: string(tok), level: level}
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
-			} else if level < prev.level {
-				for i := prev.level - level; i > 1; i-- {
-					prev = prev.Parent
+			node := &Node{Type: CommentNode, Data: string(tok), level: p.level}
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
 				}
-				addSibling(prev.Parent, node)
+				addSibling(p.prev.Parent, node)
 			}
 		case xml.ProcInst: // Processing Instruction
-			if prev.Type != DeclarationNode {
-				level++
+			if p.prev.Type != DeclarationNode {
+				p.level++
 			}
-			node := &Node{Type: DeclarationNode, Data: tok.Target, level: level}
+			node := &Node{Type: DeclarationNode, Data: tok.Target, level: p.level}
 			pairs := strings.Split(string(tok.Inst), " ")
 			for _, pair := range pairs {
 				pair = strings.TrimSpace(pair)
@@ -130,21 +153,13 @@ func parse(r io.Reader) (*Node, error) {
 					addAttr(node, pair[:i], strings.Trim(pair[i+1:], `"`))
 				}
 			}
-			if level == prev.level {
-				addSibling(prev, node)
-			} else if level > prev.level {
-				addChild(prev, node)
+			if p.level == p.prev.level {
+				addSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				addChild(p.prev, node)
 			}
-			prev = node
+			p.prev = node
 		case xml.Directive:
 		}
-
 	}
-quit:
-	return doc, nil
-}
-
-// Parse returns the parse tree for the XML from the given Reader.
-func Parse(r io.Reader) (*Node, error) {
-	return parse(r)
 }
