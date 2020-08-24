@@ -20,20 +20,6 @@ func LoadURL(url string) (*Node, error) {
 	return Parse(resp.Body)
 }
 
-// Parse returns the parse tree for the XML from the given Reader.
-func Parse(r io.Reader) (*Node, error) {
-	p := createParser(r)
-	for {
-		_, err := p.parse()
-		if err == io.EOF {
-			return p.doc, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-}
-
 type parser struct {
 	decoder      *xml.Decoder
 	doc          *Node
@@ -160,6 +146,20 @@ func (p *parser) parse() (*Node, error) {
 			}
 			p.prev = node
 		case xml.Directive:
+		}
+	}
+}
+
+// Parse returns the parse tree for the XML from the given Reader.
+func Parse(r io.Reader) (*Node, error) {
+	p := createParser(r)
+	for {
+		_, err := p.parse()
+		if err == io.EOF {
+			return p.doc, nil
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 }
