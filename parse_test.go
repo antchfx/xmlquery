@@ -1,6 +1,7 @@
 package xmlquery
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -249,4 +250,147 @@ func TestCharData(t *testing.T) {
 	}
 
 	testValue(t, cdata.InnerText(), "Richard Lawler")
+}
+
+func TestStreamParser_InvalidXPath(t *testing.T) {
+	sp, err := CreateStreamParser(strings.NewReader(""), "[invalid")
+	if err == nil || err.Error() != "invalid streamElementXPath '[invalid', err: expression must evaluate to a node-set" {
+		t.Fatalf("got non-expected error: %v", err)
+	}
+	if sp != nil {
+		t.Fatal("expected nil for sp, but got none-nil value")
+	}
+
+	sp, err = CreateStreamParser(strings.NewReader(""), ".", "[invalid")
+	if err == nil || err.Error() != "invalid streamElementFilter '[invalid', err: expression must evaluate to a node-set" {
+		t.Fatalf("got non-expected error: %v", err)
+	}
+	if sp != nil {
+		t.Fatal("expected nil for sp, but got none-nil value")
+	}
+}
+
+func root(n *Node) *Node {
+	if n == nil {
+		return nil
+	}
+	for ; n.Parent != nil; n = n.Parent {
+	}
+	return n
+}
+
+func testOutputXML(t *testing.T, msg string, expectedXML string, n *Node) {
+	if n.OutputXML(true) != expectedXML {
+		t.Fatalf("%s, expected XML: '%s', actual: '%s'", msg, expectedXML, n.OutputXML(true))
+	}
+}
+
+func TestStreamParser_Success1(t *testing.T) {
+	s := `
+	<AAA>
+		<CCC>c1</CCC>
+		<BBB>b1</BBB>
+		<DDD>d1</DDD>
+		<BBB>b2<ZZZ z="1">z1</ZZZ></BBB>
+		<BBB>b3</BBB>
+		<BBB>b4</BBB>
+		<BBB>b5</BBB>
+		<CCC>c3</CCC>
+	</AAA>`
+
+	sp, err := CreateStreamParser(strings.NewReader(s), "/AAA/BBB", "/AAA/BBB[. != 'b3']")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// First `<BBB>` read
+	n, err := sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "first call result", `<BBB>b1</BBB>`, n)
+	testOutputXML(t, "doc after first call", `<><?xml?><AAA><CCC>c1</CCC><BBB>b1</BBB></AAA></>`, root(n))
+
+	// Second `<BBB>` read
+	n, err = sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "second call result", `<BBB>b2<ZZZ z="1">z1</ZZZ></BBB>`, n)
+	testOutputXML(t, "doc after second call",
+		`<><?xml?><AAA><CCC>c1</CCC><DDD>d1</DDD><BBB>b2<ZZZ z="1">z1</ZZZ></BBB></AAA></>`, root(n))
+
+	// Third `<BBB>` read (Note we will skip 'b3' since the streamElementFilter excludes it)
+	n, err = sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "third call result", `<BBB>b4</BBB>`, n)
+	// Note the inclusion of `<BBB>b3</BBB>` in the document? This is because `<BBB>b3</BBB>` has
+	// been filtered out and is not our target node, thus it is considered just like any other
+	// non target nodes such as `<CCC>`` or `<DDD>`
+	testOutputXML(t, "doc after third call",
+		`<><?xml?><AAA><CCC>c1</CCC><DDD>d1</DDD><BBB>b3</BBB><BBB>b4</BBB></AAA></>`, root(n))
+
+	// Fourth `<BBB>` read
+	n, err = sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "fourth call result", `<BBB>b5</BBB>`, n)
+	// Note the inclusion of `<BBB>b3</BBB>` in the document.
+	testOutputXML(t, "doc after fourth call",
+		`<><?xml?><AAA><CCC>c1</CCC><DDD>d1</DDD><BBB>b3</BBB><BBB>b5</BBB></AAA></>`, root(n))
+
+	_, err = sp.Read()
+	if err != io.EOF {
+		t.Fatalf("io.EOF expected, but got %v", err)
+	}
+}
+
+func TestStreamParser_Success2(t *testing.T) {
+	s := `
+	<AAA>
+		<CCC>c1</CCC>
+		<BBB>b1</BBB>
+		<DDD>d1</DDD>
+		<BBB>b2</BBB>
+		<CCC>c2</CCC>
+	</AAA>`
+
+	sp, err := CreateStreamParser(strings.NewReader(s), "/AAA/CCC | /AAA/DDD")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// First Read() should return c1
+	n, err := sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "first call result", `<CCC>c1</CCC>`, n)
+	testOutputXML(t, "doc after first call", `<><?xml?><AAA><CCC>c1</CCC></AAA></>`, root(n))
+
+	// Second Read() should return d1
+	n, err = sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "second call result", `<DDD>d1</DDD>`, n)
+	testOutputXML(t, "doc after second call",
+		`<><?xml?><AAA><BBB>b1</BBB><DDD>d1</DDD></AAA></>`, root(n))
+
+	// Third call should return c2
+	n, err = sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "third call result", `<CCC>c2</CCC>`, n)
+	testOutputXML(t, "doc after third call",
+		`<><?xml?><AAA><BBB>b1</BBB><BBB>b2</BBB><CCC>c2</CCC></AAA></>`, root(n))
+
+	_, err = sp.Read()
+	if err != io.EOF {
+		t.Fatalf("io.EOF expected, but got %v", err)
+	}
 }
