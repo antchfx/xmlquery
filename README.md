@@ -76,7 +76,6 @@ doc, err := xmlquery.Parse(f)
 ```go
 f, err := os.Open("../books.xml")
 p, err := xmlquery.CreateStreamParser(f, "/bookstore/book")
-
 for {
 	n, err := p.Read()
 	if err == io.EOF {
@@ -92,7 +91,7 @@ for {
 
 ```go
 f, err := os.Open("../books.xml")
-p, err := xmlquery.CreateStreamParser(f, "/bookstore/book", "/bookstore/book[price>=10])
+p, err := xmlquery.CreateStreamParser(f, "/bookstore/book", "/bookstore/book[price>=10]")
 for {
 	n, err := p.Read()
 	if err == io.EOF {
