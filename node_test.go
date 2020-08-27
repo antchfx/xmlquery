@@ -1,11 +1,21 @@
 package xmlquery
 
 import (
+	"encoding/xml"
 	"html"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func findRoot(n *Node) *Node {
+	if n == nil {
+		return nil
+	}
+	for ; n.Parent != nil; n = n.Parent {
+	}
+	return n
+}
 
 func findNode(root *Node, name string) *Node {
 	node := root.FirstChild
@@ -107,6 +117,36 @@ func verifyNodePointers(t *testing.T, n *Node) {
 	testTrue(t, parent == nil || parent.LastChild == cur)
 }
 
+func TestAddAttr(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		n        *Node
+		key      string
+		val      string
+		expected string
+	}{
+		{
+			name:     "node has no existing attr",
+			n:        &Node{Type: AttributeNode},
+			key:      "ns:k1",
+			val:      "v1",
+			expected: `< ns:k1="v1"></>`,
+		},
+		{
+			name:     "node has existing attrs",
+			n:        &Node{Type: AttributeNode, Attr: []xml.Attr{{Name: xml.Name{Local: "k1"}, Value: "v1"}}},
+			key:      "k2",
+			val:      "v2",
+			expected: `< k1="v1" k2="v2"></>`,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			AddAttr(test.n, test.key, test.val)
+			testValue(t, test.n.OutputXML(true), test.expected)
+		})
+	}
+}
+
 func TestRemoveFromTree(t *testing.T) {
 	xml := `<?procinst?>
 		<!--comment-->
@@ -123,7 +163,7 @@ func TestRemoveFromTree(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ddd/eee")
 		testTrue(t, n != nil)
-		removeFromTree(n)
+		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXML(false),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd></ddd><ggg></ggg></aaa>`)
@@ -133,7 +173,7 @@ func TestRemoveFromTree(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/bbb")
 		testTrue(t, n != nil)
-		removeFromTree(n)
+		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXML(false),
 			`<?procinst?><!--comment--><aaa><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
@@ -143,7 +183,7 @@ func TestRemoveFromTree(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ddd")
 		testTrue(t, n != nil)
-		removeFromTree(n)
+		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXML(false),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ggg></ggg></aaa>`)
@@ -153,7 +193,7 @@ func TestRemoveFromTree(t *testing.T) {
 		doc := parseXML()
 		n := FindOne(doc, "//aaa/ggg")
 		testTrue(t, n != nil)
-		removeFromTree(n)
+		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXML(false),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd></aaa>`)
@@ -163,7 +203,7 @@ func TestRemoveFromTree(t *testing.T) {
 		doc := parseXML()
 		procInst := doc.FirstChild
 		testValue(t, procInst.Type, DeclarationNode)
-		removeFromTree(procInst)
+		RemoveFromTree(procInst)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXML(false),
 			`<!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
@@ -173,7 +213,7 @@ func TestRemoveFromTree(t *testing.T) {
 		doc := parseXML()
 		commentNode := doc.FirstChild.NextSibling.NextSibling // First .NextSibling is an empty text node.
 		testValue(t, commentNode.Type, CommentNode)
-		removeFromTree(commentNode)
+		RemoveFromTree(commentNode)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXML(false),
 			`<?procinst?><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
@@ -181,7 +221,7 @@ func TestRemoveFromTree(t *testing.T) {
 
 	t.Run("remove call on root does nothing", func(t *testing.T) {
 		doc := parseXML()
-		removeFromTree(doc)
+		RemoveFromTree(doc)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXML(false),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)

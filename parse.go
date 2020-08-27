@@ -76,7 +76,7 @@ func (p *parser) parse() (*Node, error) {
 			if p.level == 0 {
 				// mising XML declaration
 				node := &Node{Type: DeclarationNode, Data: "xml", level: 1}
-				addChild(p.prev, node)
+				AddChild(p.prev, node)
 				p.level = 1
 				p.prev = node
 			}
@@ -112,14 +112,14 @@ func (p *parser) parse() (*Node, error) {
 			}
 			//fmt.Println(fmt.Sprintf("start > %s : %d", node.Data, node.level))
 			if p.level == p.prev.level {
-				addSibling(p.prev, node)
+				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
-				addChild(p.prev, node)
+				AddChild(p.prev, node)
 			} else if p.level < p.prev.level {
 				for i := p.prev.level - p.level; i > 1; i-- {
 					p.prev = p.prev.Parent
 				}
-				addSibling(p.prev.Parent, node)
+				AddSibling(p.prev.Parent, node)
 			}
 			// If we're in the streaming mode, we need to remember the node if it is the target node
 			// so that when we finish processing the node's EndElement, we know how/what to return to
@@ -172,26 +172,26 @@ func (p *parser) parse() (*Node, error) {
 		case xml.CharData:
 			node := &Node{Type: CharDataNode, Data: string(tok), level: p.level}
 			if p.level == p.prev.level {
-				addSibling(p.prev, node)
+				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
-				addChild(p.prev, node)
+				AddChild(p.prev, node)
 			} else if p.level < p.prev.level {
 				for i := p.prev.level - p.level; i > 1; i-- {
 					p.prev = p.prev.Parent
 				}
-				addSibling(p.prev.Parent, node)
+				AddSibling(p.prev.Parent, node)
 			}
 		case xml.Comment:
 			node := &Node{Type: CommentNode, Data: string(tok), level: p.level}
 			if p.level == p.prev.level {
-				addSibling(p.prev, node)
+				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
-				addChild(p.prev, node)
+				AddChild(p.prev, node)
 			} else if p.level < p.prev.level {
 				for i := p.prev.level - p.level; i > 1; i-- {
 					p.prev = p.prev.Parent
 				}
-				addSibling(p.prev.Parent, node)
+				AddSibling(p.prev.Parent, node)
 			}
 		case xml.ProcInst: // Processing Instruction
 			if p.prev.Type != DeclarationNode {
@@ -202,13 +202,13 @@ func (p *parser) parse() (*Node, error) {
 			for _, pair := range pairs {
 				pair = strings.TrimSpace(pair)
 				if i := strings.Index(pair, "="); i > 0 {
-					addAttr(node, pair[:i], strings.Trim(pair[i+1:], `"`))
+					AddAttr(node, pair[:i], strings.Trim(pair[i+1:], `"`))
 				}
 			}
 			if p.level == p.prev.level {
-				addSibling(p.prev, node)
+				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
-				addChild(p.prev, node)
+				AddChild(p.prev, node)
 			}
 			p.prev = node
 		case xml.Directive:
@@ -293,7 +293,7 @@ func (sp *StreamParser) Read() (*Node, error) {
 	// Because this is a streaming read, we need to release/remove last
 	// target node from the node tree to free up memory.
 	if sp.p.streamNode != nil {
-		removeFromTree(sp.p.streamNode)
+		RemoveFromTree(sp.p.streamNode)
 		sp.p.prev = sp.p.streamNodePrev
 		sp.p.streamNode = nil
 		sp.p.streamNodePrev = nil
