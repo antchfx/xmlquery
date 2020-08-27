@@ -141,7 +141,8 @@ func (n *Node) OutputXML(self bool) string {
 	return buf.String()
 }
 
-func addAttr(n *Node, key, val string) {
+// AddAttr adds a new attribute specified by 'key' and 'val' to a node 'n'.
+func AddAttr(n *Node, key, val string) {
 	var attr xml.Attr
 	if i := strings.Index(key, ":"); i > 0 {
 		attr = xml.Attr{
@@ -158,10 +159,13 @@ func addAttr(n *Node, key, val string) {
 	n.Attr = append(n.Attr, attr)
 }
 
-func addChild(parent, n *Node) {
+// AddChild adds a new node 'n' to a node 'parent' as its last child.
+func AddChild(parent, n *Node) {
 	n.Parent = parent
+	n.NextSibling = nil
 	if parent.FirstChild == nil {
 		parent.FirstChild = n
+		n.PrevSibling = nil
 	} else {
 		parent.LastChild.NextSibling = n
 		n.PrevSibling = parent.LastChild
@@ -170,21 +174,27 @@ func addChild(parent, n *Node) {
 	parent.LastChild = n
 }
 
-func addSibling(sibling, n *Node) {
+// AddSibling adds a new node 'n' as a sibling of a given node 'sibling'.
+// Note it is not necessarily true that the new node 'n' would be added
+// immediately after 'sibling'. If 'sibling' isn't the last child of its
+// parent, then the new node 'n' will be added at the end of the sibling
+// chain of their parent.
+func AddSibling(sibling, n *Node) {
 	for t := sibling.NextSibling; t != nil; t = t.NextSibling {
 		sibling = t
 	}
 	n.Parent = sibling.Parent
 	sibling.NextSibling = n
 	n.PrevSibling = sibling
+	n.NextSibling = nil
 	if sibling.Parent != nil {
 		sibling.Parent.LastChild = n
 	}
 }
 
-// removes a node and its subtree from the tree it is in.
-// If the node is the root of the tree, then it's no-op.
-func removeFromTree(n *Node) {
+// RemoveFromTree removes a node and its subtree from the document
+// tree it is in. If the node is the root of the tree, then it's no-op.
+func RemoveFromTree(n *Node) {
 	if n.Parent == nil {
 		return
 	}
