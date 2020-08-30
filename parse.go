@@ -19,7 +19,12 @@ func LoadURL(url string) (*Node, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return Parse(resp.Body)
+	// Checking the HTTP Content-Type value from the response headers.(#39)
+	v := strings.ToLower(resp.Header.Get("Content-Type"))
+	if v == "text/xml" || v == "application/xml" {
+		return Parse(resp.Body)
+	}
+	return nil, fmt.Errorf("invalid XML document(%s)", v)
 }
 
 // Parse returns the parse tree for the XML from the given Reader.
