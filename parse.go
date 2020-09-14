@@ -169,7 +169,11 @@ func (p *parser) parse() (*Node, error) {
 					if p.streamElementFilter == nil || QuerySelector(p.doc, p.streamElementFilter) != nil {
 						return p.streamNode, nil
 					}
-					// otherwise, this isn't our target node. clean things up.
+					// otherwise, this isn't our target node, clean things up.
+					// note we also remove the underlying *Node from the node tree, to prevent
+					// future stream node candidate selection error.
+					RemoveFromTree(p.streamNode)
+					p.prev = p.streamNodePrev
 					p.streamNode = nil
 					p.streamNodePrev = nil
 				}
