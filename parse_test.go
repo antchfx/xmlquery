@@ -1,6 +1,7 @@
 package xmlquery
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,19 +9,83 @@ import (
 	"testing"
 )
 
-func TestLoadURL(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s := `<?xml version="1.0"?>
-       <rss>
-	   	<title></title>
-	   </rss>`
-		w.Header().Set("Content-Type", "text/xml")
-		w.Write([]byte(s))
-	}))
-	defer server.Close()
-	_, err := LoadURL(server.URL)
-	if err != nil {
-		t.Fatal(err)
+func TestLoadURLSuccess(t *testing.T) {
+	contentTypes := []string{
+		"application/vnd.paos.xml",
+		"application/vnd.otps.ct-kip+xml",
+		"application/vnd.openxmlformats-package.core-properties+xml",
+		"application/CDFX+XML",
+		"application/ATXML",
+		"application/3gpdash-qoe-report+xml",
+		"application/vnd.nokia.pcd+wbxml",
+		"image/svg+xml",
+		"message/imdn+xml",
+		"model/vnd.collada+xml",
+		"text/xml-external-parsed-entity",
+		"text/xml",
+		"aPPLIcaTioN/xMl; charset=UTF-8",
+		"application/xhtml+xml",
+		"application/xml",
+		"text/xmL; charset=UTF-8",
+		"application/aTOM+xmL; charset=UTF-8",
+		"application/RsS+xmL; charset=UTF-8",
+		"application/maTHml+xmL; charset=UTF-8",
+		"application/xslt+xmL; charset=UTF-8",
+	}
+
+	for _, contentType := range contentTypes {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s := `<?xml version="1.0"?>
+				<parent>
+					<child></child>
+				</parent>
+			`
+			w.Header().Set("Content-Type", contentType)
+			w.Write([]byte(s))
+		}))
+		defer server.Close()
+		_, err := LoadURL(server.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestLoadURLFailure(t *testing.T) {
+	contentTypes := []string{
+		"application/pdf",
+		"application/json",
+		"application/tlsrpt+gzip",
+		"application/vnd.3gpp.pic-bw-small",
+		"application/vnd.collabio.xodocuments.document-template",
+		"application/vnd.ctc-posml",
+		"application/vnd.gov.sk.e-form+zip",
+		"audio/mp4",
+		"audio/vnd.sealedmedia.softseal.mpeg",
+		"image/png",
+		"image/vnd.adobe.photoshop",
+		"message/example",
+		"message/vnd.wfa.wsc",
+		"model/vnd.usdz+zip",
+		"model/vnd.valve.source.compiled-map",
+		"multipart/signed",
+		"text/css",
+		"text/html",
+		"video/quicktime",
+		"video/JPEG",
+	}
+
+	for _, contentType := range contentTypes {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", contentType)
+		}))
+		defer server.Close()
+		_, err := LoadURL(server.URL)
+		if err != nil && err.Error() == fmt.Sprintf("invalid XML document(%s)", contentType) {
+			return
+		}
+
+		t.Fatalf("Want invalid XML document(%s), got %v", contentType, err)
 	}
 }
 

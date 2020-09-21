@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/antchfx/xpath"
@@ -19,12 +20,12 @@ func LoadURL(url string) (*Node, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	// Checking the HTTP Content-Type value from the response headers.(#39)
-	v := strings.ToLower(resp.Header.Get("Content-Type"))
-	if v == "text/xml" || v == "application/xml" {
+	// Make sure the Content-Type has a valid XML MIME type
+	regex := regexp.MustCompile(`(?i)((application|image|message|model)/((\w|\.|-)+\+?)?|text/)(wb)?xml`)
+	if regex.MatchString(resp.Header.Get("Content-Type")) {
 		return Parse(resp.Body)
 	}
-	return nil, fmt.Errorf("invalid XML document(%s)", v)
+	return nil, fmt.Errorf("invalid XML document(%s)", resp.Header.Get("Content-Type"))
 }
 
 // Parse returns the parse tree for the XML from the given Reader.
