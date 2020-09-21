@@ -13,6 +13,8 @@ import (
 	"golang.org/x/net/html/charset"
 )
 
+var xmlMIMERegex = regexp.MustCompile(`(?i)((application|image|message|model)/((\w|\.|-)+\+?)?|text/)(wb)?xml`)
+
 // LoadURL loads the XML document from the specified URL.
 func LoadURL(url string) (*Node, error) {
 	resp, err := http.Get(url)
@@ -21,8 +23,7 @@ func LoadURL(url string) (*Node, error) {
 	}
 	defer resp.Body.Close()
 	// Make sure the Content-Type has a valid XML MIME type
-	regex := regexp.MustCompile(`(?i)((application|image|message|model)/((\w|\.|-)+\+?)?|text/)(wb)?xml`)
-	if regex.MatchString(resp.Header.Get("Content-Type")) {
+	if xmlMIMERegex.MatchString(resp.Header.Get("Content-Type")) {
 		return Parse(resp.Body)
 	}
 	return nil, fmt.Errorf("invalid XML document(%s)", resp.Header.Get("Content-Type"))
