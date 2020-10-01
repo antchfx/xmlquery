@@ -82,8 +82,13 @@ func calculatePreserveSpaces(n *Node, pastValue bool) bool {
 func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 	preserveSpaces = calculatePreserveSpaces(n, preserveSpaces)
 	switch n.Type {
-	case TextNode, CharDataNode:
+	case TextNode:
 		xml.EscapeText(buf, []byte(n.sanitizedData(preserveSpaces)))
+		return
+	case CharDataNode:
+		buf.WriteString("<![CDATA[")
+		xml.EscapeText(buf, []byte(n.sanitizedData(preserveSpaces)))
+		buf.WriteString("]]>")
 		return
 	case CommentNode:
 		buf.WriteString("<!--")
