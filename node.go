@@ -14,8 +14,8 @@ const (
 	// DocumentNode is a document object that, as the root of the document tree,
 	// provides access to the entire XML document.
 	DocumentNode NodeType = iota
-	// DeclarationNode is the document type declaration, indicated by the following
-	// tag (for example, <!DOCTYPE...> ).
+	// DeclarationNode is the document type declaration, indicated by the
+	// following tag (for example, <!DOCTYPE...> ).
 	DeclarationNode
 	// ElementNode is an element (for example, <item> ).
 	ElementNode

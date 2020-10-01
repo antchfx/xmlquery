@@ -117,7 +117,7 @@ func (p *parser) parse() (*Node, error) {
 				Attr:         tok.Attr,
 				level:        p.level,
 			}
-			//fmt.Println(fmt.Sprintf("start > %s : %d", node.Data, node.level))
+
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
@@ -227,13 +227,16 @@ func (p *parser) parse() (*Node, error) {
 	}
 }
 
-// StreamParser enables loading and parsing an XML document in a streaming fashion.
+// StreamParser enables loading and parsing an XML document in a streaming
+// fashion.
 type StreamParser struct {
 	p *parser
 }
 
-// CreateStreamParser creates a StreamParser. Argument streamElementXPath is required.
-// Argument streamElementFilter is optional and should only be used in advanced scenarios.
+// CreateStreamParser creates a StreamParser. Argument streamElementXPath is
+// required.
+// Argument streamElementFilter is optional and should only be used in advanced
+// scenarios.
 //
 // Scenario 1: simple case:
 //  xml := `<AAA><BBB>b1</BBB><BBB>b2</BBB></AAA>`
@@ -268,12 +271,15 @@ type StreamParser struct {
 // Output will be:
 //   <BBB>b2</BBB>
 //
-// As the argument names indicate, streamElementXPath should be used for providing xpath query pointing
-// to the target element node only, no extra filtering on the element itself or its children; while
-// streamElementFilter, if needed, can provide additional filtering on the target element and its children.
+// As the argument names indicate, streamElementXPath should be used for
+// providing xpath query pointing to the target element node only, no extra
+// filtering on the element itself or its children; while streamElementFilter,
+// if needed, can provide additional filtering on the target element and its
+// children.
 //
-// CreateStreamParser returns error if either streamElementXPath or streamElementFilter, if provided, cannot
-// be successfully parsed and compiled into a valid xpath query.
+// CreateStreamParser returns an error if either streamElementXPath or
+// streamElementFilter, if provided, cannot be successfully parsed and compiled
+// into a valid xpath query.
 func CreateStreamParser(r io.Reader, streamElementXPath string, streamElementFilter ...string) (*StreamParser, error) {
 	elemXPath, err := getQuery(streamElementXPath)
 	if err != nil {
@@ -294,12 +300,13 @@ func CreateStreamParser(r io.Reader, streamElementXPath string, streamElementFil
 	return sp, nil
 }
 
-// Read returns a target node that satisifies the XPath specified by caller at StreamParser creation
-// time. If there is no more satisifying target node after reading the rest of the XML document, io.EOF
-// will be returned. At any time, any XML parsing error encountered, the error will be returned and
-// the stream parsing is stopped. Calling Read() after an error is returned (including io.EOF) is not
-// allowed the behavior will be undefined. Also note, due to the streaming nature, calling Read() will
-// automatically remove any previous target node(s) from the document tree.
+// Read returns a target node that satisfies the XPath specified by caller at
+// StreamParser creation time. If there is no more satisfying target nodes after
+// reading the rest of the XML document, io.EOF will be returned. At any time,
+// any XML parsing error encountered will be returned, and the stream parsing
+// stopped. Calling Read() after an error is returned (including io.EOF) results
+// undefined behavior. Also note, due to the streaming nature, calling Read()
+// will automatically remove any previous target node(s) from the document tree.
 func (sp *StreamParser) Read() (*Node, error) {
 	// Because this is a streaming read, we need to release/remove last
 	// target node from the node tree to free up memory.
