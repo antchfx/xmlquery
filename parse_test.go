@@ -94,7 +94,7 @@ func TestNamespaceURL(t *testing.T) {
 <?xml version="1.0"?>
 <rss version="2.0" xmlns="http://www.example.com/" xmlns:dc="https://purl.org/dc/elements/1.1/">
 <!-- author -->
-<dc:creator><![CDATA[Richard Lawler]]></dc:creator>
+<dc:creator><![CDATA[Richard ]]><![CDATA[Lawler]]></dc:creator>
 <dc:identifier>21|22021348</dc:identifier>
 </rss>
 	`
@@ -455,4 +455,22 @@ func TestStreamParser_Success2(t *testing.T) {
 	if err != io.EOF {
 		t.Fatalf("io.EOF expected, but got %v", err)
 	}
+}
+
+func TestCDATA(t *testing.T) {
+	s := `
+	<AAA>
+		<CCC><![CDATA[c1]]></CCC>
+	</AAA>`
+
+	sp, err := CreateStreamParser(strings.NewReader(s), "/AAA/CCC")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	n, err := sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	testOutputXML(t, "first call result", `<CCC><![CDATA[c1]]></CCC>`, n)
 }

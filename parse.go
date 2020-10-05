@@ -1,6 +1,7 @@
 package xmlquery
 
 import (
+	"bufio"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -49,18 +50,21 @@ type parser struct {
 	space2prefix        map[string]string
 	level               int
 	prev                *Node
-	streamElementXPath  *xpath.Expr // Under streaming mode, this specifies the xpath to the target element node(s).
-	streamElementFilter *xpath.Expr // If specified, it provides a futher filtering on the target element.
-	streamNode          *Node       // Need to remmeber the last target node So we can clean it up upon next Read() call.
-	streamNodePrev      *Node       // Need to remember target node's prev so upon target node removal, we can restore correct prev.
+	streamElementXPath  *xpath.Expr   // Under streaming mode, this specifies the xpath to the target element node(s).
+	streamElementFilter *xpath.Expr   // If specified, it provides further filtering on the target element.
+	streamNode          *Node         // Need to remember the last target node So we can clean it up upon next Read() call.
+	streamNodePrev      *Node         // Need to remember target node's prev so upon target node removal, we can restore correct prev.
+	reader              *cachedReader // Need to maintain a reference to the reader, so we can determine whether a node contains CDATA.
 }
 
 func createParser(r io.Reader) *parser {
+	reader := newCachedReader(bufio.NewReader(r))
 	p := &parser{
-		decoder:      xml.NewDecoder(r),
+		decoder:      xml.NewDecoder(reader),
 		doc:          &Node{Type: DocumentNode},
 		space2prefix: make(map[string]string),
 		level:        0,
+		reader:       reader,
 	}
 	// http://www.w3.org/XML/1998/namespace is bound by definition to the prefix xml.
 	p.space2prefix["http://www.w3.org/XML/1998/namespace"] = "xml"
@@ -145,6 +149,7 @@ func (p *parser) parse() (*Node, error) {
 			}
 			p.prev = node
 			p.level++
+			p.reader.StartCaching()
 		case xml.EndElement:
 			p.level--
 			// If we're in streaming mode, and we already have a potential streaming
@@ -181,7 +186,15 @@ func (p *parser) parse() (*Node, error) {
 				}
 			}
 		case xml.CharData:
-			node := &Node{Type: CharDataNode, Data: string(tok), level: p.level}
+			p.reader.StopCaching()
+			// First, normalize the cache...
+			cached := strings.ToUpper(string(p.reader.Cache()))
+			nodeType := TextNode
+			if strings.HasPrefix(cached, "<![CDATA[") {
+				nodeType = CharDataNode
+			}
+
+			node := &Node{Type: nodeType, Data: string(tok), level: p.level}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
@@ -192,6 +205,7 @@ func (p *parser) parse() (*Node, error) {
 				}
 				AddSibling(p.prev.Parent, node)
 			}
+			p.reader.StartCaching()
 		case xml.Comment:
 			node := &Node{Type: CommentNode, Data: string(tok), level: p.level}
 			if p.level == p.prev.level {
