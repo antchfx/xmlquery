@@ -8,9 +8,12 @@ xmlquery
 Overview
 ===
 
-`xmlquery` is an XPath query package for XML document, lets you extract data or evaluate from XML documents by an XPath expression.
+`xmlquery` is an XPath query package for XML documents, allowing you to extract 
+data or evaluate from XML documents with an XPath expression.
 
-`xmlquery` built-in the query object caching feature will caching the recently used XPATH query string. Enable caching can avoid re-compile XPath expression each query. 
+`xmlquery` has a built-in query object caching feature that caches recently used
+XPATH query strings. Enabling caching can avoid recompile XPath expression for 
+each query. 
 
 Change Logs
 ===
@@ -22,16 +25,16 @@ Change Logs
 - Add XPath query caching.
 
 2019-10-05 
-- Add new methods that compatible with invalid XPath expression error: `QueryAll` and `Query`.
-- Add `QuerySelector` and `QuerySelectorAll` methods, supported reused your query object.
+- Add new methods compatible with invalid XPath expression error: `QueryAll` and `Query`.
+- Add `QuerySelector` and `QuerySelectorAll` methods, support for reused query objects.
 - PR [#12](https://github.com/antchfx/xmlquery/pull/12) (Thanks @FrancescoIlario)
 - PR [#11](https://github.com/antchfx/xmlquery/pull/11) (Thanks @gjvnq)
 
 2018-12-23
-- added XML output will including comment node. [#9](https://github.com/antchfx/xmlquery/issues/9)
+- Added XML output including comment nodes. [#9](https://github.com/antchfx/xmlquery/issues/9)
 
 2018-12-03
-- added support attribute name with namespace prefix and XML output. [#6](https://github.com/antchfx/xmlquery/issues/6)
+- Added support to attribute name with namespace prefix and XML output. [#6](https://github.com/antchfx/xmlquery/issues/6)
 
 Installation
 ====
@@ -71,7 +74,7 @@ f, err := os.Open("../books.xml")
 doc, err := xmlquery.Parse(f)
 ```
 
-#### Parse an XML in a stream fashion (simple case without element filtering).
+#### Parse an XML in a stream fashion (simple case without elements filtering).
 
 ```go
 f, err := os.Open("../books.xml")
@@ -117,25 +120,25 @@ list := xmlquery.Find(doc, "//author")
 book := xmlquery.FindOne(doc, "//book[2]")
 ```
 
-#### Find all book elements and only get `id` attribute self. (New Feature)
+#### Find all book elements and only get `id` attribute. (New Feature)
 
 ```go
 list := xmlquery.Find(doc,"//book/@id")
 ```
 
-#### Find all books with id is bk104.
+#### Find all books with id `bk104`.
 
 ```go
 list := xmlquery.Find(doc, "//book[@id='bk104']")
 ```
 
-#### Find all books that price less than 5.
+#### Find all books with price less than 5.
 
 ```go
 list := xmlquery.Find(doc, "//book[price<5]")
 ```
 
-#### Evaluate the total price of all books.
+#### Evaluate total price of all books.
 
 ```go
 expr, err := xpath.Compile("sum(//book/price)")
@@ -143,7 +146,7 @@ price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
 fmt.Printf("total price: %f\n", price)
 ```
 
-#### Evaluate the number of all books element.
+#### Evaluate number of all book elements.
 
 ```go
 expr, err := xpath.Compile("count(//book)")
@@ -155,14 +158,17 @@ FAQ
 
 #### `Find()` vs `QueryAll()`, which is better?
 
-`Find` and `QueryAll` both do the same things, searches all of matched html nodes.
-The `Find` will panics if you give an error XPath query, but `QueryAll` will return an error for you.
+`Find` and `QueryAll` both do the same thing: searches all of matched XML nodes.
+`Find` panics if provided with an invalid XPath query, while `QueryAll` returns
+an error.
 
 #### Can I save my query expression object for the next query?
 
-Yes, you can. We offer the `QuerySelector` and `QuerySelectorAll` methods, It will accept your query expression object.
+Yes, you can. We provide `QuerySelector` and `QuerySelectorAll` methods; they 
+accept your query expression object.
 
-Cache a query expression object(or reused) will avoid re-compile XPath query expression, improve your query performance.
+Caching a query expression object avoids recompiling the XPath query 
+expression, improving query performance.
 
 #### Create XML document.
 
@@ -247,9 +253,9 @@ List of supported XPath query packages
 ===
 | Name                                              | Description                               |
 | ------------------------------------------------- | ----------------------------------------- |
-| [htmlquery](https://github.com/antchfx/htmlquery) | XPath query package for the HTML document |
-| [xmlquery](https://github.com/antchfx/xmlquery)   | XPath query package for the XML document  |
-| [jsonquery](https://github.com/antchfx/jsonquery) | XPath query package for the JSON document |
+| [htmlquery](https://github.com/antchfx/htmlquery) | XPath query package for HTML documents    |
+| [xmlquery](https://github.com/antchfx/xmlquery)   | XPath query package for XML documents     |
+| [jsonquery](https://github.com/antchfx/jsonquery) | XPath query package for JSON documents    |
 
  Questions
 ===
