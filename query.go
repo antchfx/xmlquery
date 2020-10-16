@@ -272,9 +272,11 @@ func (x *NodeNavigator) MoveToNext() bool {
 	if x.attr != -1 {
 		return false
 	}
-	if node := x.curr.NextSibling; node != nil {
+	for node := x.curr.NextSibling; node != nil; node = x.curr.NextSibling {
 		x.curr = node
-		return true
+		if x.curr.Type != TextNode {
+			return true
+		}
 	}
 	return false
 }
@@ -283,9 +285,11 @@ func (x *NodeNavigator) MoveToPrevious() bool {
 	if x.attr != -1 {
 		return false
 	}
-	if node := x.curr.PrevSibling; node != nil {
+	for node := x.curr.PrevSibling; node != nil; node = x.curr.PrevSibling {
 		x.curr = node
-		return true
+		if x.curr.Type != TextNode {
+			return true
+		}
 	}
 	return false
 }
