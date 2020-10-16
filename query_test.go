@@ -115,7 +115,6 @@ func TestNavigator(t *testing.T) {
 		t.Fatal("node type not CommentNode")
 	}
 	nav.Value()
-	nav.MoveToNext() // New Line
 	nav.MoveToNext() //book
 	nav.MoveToChild()
 	nav.MoveToNext() // book/author
