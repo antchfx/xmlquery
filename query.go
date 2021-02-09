@@ -193,6 +193,9 @@ func (x *NodeNavigator) Prefix() string {
 }
 
 func (x *NodeNavigator) NamespaceURL() string {
+	if x.attr != -1 {
+		return x.curr.Attr[x.attr].NamespaceURI
+	}
 	return x.curr.NamespaceURI
 }
 

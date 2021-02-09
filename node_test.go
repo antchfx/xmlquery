@@ -134,7 +134,7 @@ func TestAddAttr(t *testing.T) {
 		},
 		{
 			name:     "node has existing attrs",
-			n:        &Node{Type: AttributeNode, Attr: []xml.Attr{{Name: xml.Name{Local: "k1"}, Value: "v1"}}},
+			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Local: "k1"}, Value: "v1"}}},
 			key:      "k2",
 			val:      "v2",
 			expected: `< k1="v1" k2="v2"></>`,
