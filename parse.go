@@ -106,10 +106,16 @@ func (p *parser) parse() (*Node, error) {
 				}
 			}
 
-			for i := 0; i < len(tok.Attr); i++ {
-				att := &tok.Attr[i]
-				if prefix, ok := p.space2prefix[att.Name.Space]; ok {
-					att.Name.Space = prefix
+			attributes := make([]Attr, len(tok.Attr))
+			for i, att := range tok.Attr {
+				name := att.Name
+				if prefix, ok := p.space2prefix[name.Space]; ok {
+					name.Space = prefix
+				}
+				attributes[i] = Attr{
+					Name:         name,
+					Value:        att.Value,
+					NamespaceURI: att.Name.Space,
 				}
 			}
 
@@ -118,7 +124,7 @@ func (p *parser) parse() (*Node, error) {
 				Data:         tok.Name.Local,
 				Prefix:       p.space2prefix[tok.Name.Space],
 				NamespaceURI: tok.Name.Space,
-				Attr:         tok.Attr,
+				Attr:         attributes,
 				level:        p.level,
 			}
 

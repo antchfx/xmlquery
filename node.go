@@ -29,6 +29,12 @@ const (
 	AttributeNode
 )
 
+type Attr struct {
+	Name         xml.Name
+	Value        string
+	NamespaceURI string
+}
+
 // A Node consists of a NodeType and some Data (tag name for
 // element nodes, content for text) and are part of a tree of Nodes.
 type Node struct {
@@ -38,7 +44,7 @@ type Node struct {
 	Data         string
 	Prefix       string
 	NamespaceURI string
-	Attr         []xml.Attr
+	Attr         []Attr
 
 	level int // node level in the tree
 }
@@ -148,14 +154,14 @@ func (n *Node) OutputXML(self bool) string {
 
 // AddAttr adds a new attribute specified by 'key' and 'val' to a node 'n'.
 func AddAttr(n *Node, key, val string) {
-	var attr xml.Attr
+	var attr Attr
 	if i := strings.Index(key, ":"); i > 0 {
-		attr = xml.Attr{
+		attr = Attr{
 			Name:  xml.Name{Space: key[:i], Local: key[i+1:]},
 			Value: val,
 		}
 	} else {
-		attr = xml.Attr{
+		attr = Attr{
 			Name:  xml.Name{Local: key},
 			Value: val,
 		}
