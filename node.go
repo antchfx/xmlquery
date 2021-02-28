@@ -93,7 +93,7 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 		return
 	case CharDataNode:
 		buf.WriteString("<![CDATA[")
-		xml.EscapeText(buf, []byte(n.sanitizedData(preserveSpaces)))
+		buf.WriteString(n.Data)
 		buf.WriteString("]]>")
 		return
 	case CommentNode:
