@@ -410,3 +410,13 @@ func TestOutputXMLWithSpaceOverwrittenToDefault(t *testing.T) {
 	}
 	t.Log(n.OutputXML(false))
 }
+
+
+func TestOutputXMLWithXMLInCDATA(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?><node><![CDATA[<greeting>Hello, world!</greeting>]]></node>`
+	doc, _ := Parse(strings.NewReader(s))
+	t.Log(doc.OutputXML(false))
+	if doc.OutputXML(false) != s {
+		t.Errorf("the outputted xml escaped CDATA section")
+	}
+}
