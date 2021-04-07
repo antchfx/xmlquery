@@ -196,7 +196,10 @@ func (p *parser) parse() (*Node, error) {
 			// First, normalize the cache...
 			cached := strings.ToUpper(string(p.reader.Cache()))
 			nodeType := TextNode
-			if strings.HasPrefix(cached, "<![CDATA[") {
+
+			// formatted xml causes cdata nodes to process the opening < as a standalone node.
+			// so handle both cases.
+			if strings.HasPrefix(cached, "<![CDATA[") || strings.HasPrefix(cached, "![CDATA[") {
 				nodeType = CharDataNode
 			}
 
