@@ -341,6 +341,12 @@ func testOutputXML(t *testing.T, msg string, expectedXML string, n *Node) {
 	}
 }
 
+func testOutputXMLString(t *testing.T, msg string, generatedXML string, expectedXML string) {
+	if generatedXML != expectedXML {
+		t.Fatalf("%s, expected XML: '%s', actual: '%s'", msg, expectedXML, generatedXML)
+	}
+}
+
 func TestStreamParser_Success1(t *testing.T) {
 	s := `
 	<ROOT>
