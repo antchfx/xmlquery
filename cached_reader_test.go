@@ -10,9 +10,9 @@ import (
 func TestCaching(t *testing.T) {
 	buf := strings.NewReader(`ABCDEF`)
 	bufReader := bufio.NewReader(buf)
-	cachedReader := newCachedReader(bufReader)
+	CachedReader := NewCachedReader(bufReader)
 
-	b, err := cachedReader.ReadByte()
+	b, err := CachedReader.ReadByte()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -21,9 +21,9 @@ func TestCaching(t *testing.T) {
 		t.Fatalf("Expected read byte to be A, got %c instead.", b)
 	}
 
-	cachedReader.StartCaching()
+	CachedReader.StartCaching()
 	tmpBuf := make([]byte, 10)
-	n, err := cachedReader.Read(tmpBuf)
+	n, err := CachedReader.Read(tmpBuf)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -35,7 +35,7 @@ func TestCaching(t *testing.T) {
 		t.Fatalf("Incorrect read buffer value")
 	}
 
-	cached := cachedReader.Cache()
+	cached := CachedReader.Cache()
 	if !bytes.Equal(cached, []byte("BCDEF")) {
 		t.Fatalf("Incorrect cached buffer value")
 	}

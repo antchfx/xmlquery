@@ -4,7 +4,7 @@ import (
 	"bufio"
 )
 
-type cachedReader struct {
+type CachedReader struct {
 	buffer *bufio.Reader
 	cache []byte
 	cacheCap int
@@ -12,8 +12,8 @@ type cachedReader struct {
 	caching bool
 }
 
-func newCachedReader(r *bufio.Reader) *cachedReader {
-	return &cachedReader{
+func NewCachedReader(r *bufio.Reader) *CachedReader {
+	return &CachedReader{
 		buffer:   r,
 		cache:    make([]byte, 4096),
 		cacheCap: 4096,
@@ -22,12 +22,12 @@ func newCachedReader(r *bufio.Reader) *cachedReader {
 	}
 }
 
-func (c *cachedReader) StartCaching() {
+func (c *CachedReader) StartCaching() {
 	c.cacheLen = 0
 	c.caching = true
 }
 
-func (c *cachedReader) ReadByte() (byte, error) {
+func (c *CachedReader) ReadByte() (byte, error) {
 	if !c.caching {
 		return c.buffer.ReadByte()
 	}
@@ -42,15 +42,15 @@ func (c *cachedReader) ReadByte() (byte, error) {
 	return b, err
 }
 
-func (c *cachedReader) Cache() []byte {
+func (c *CachedReader) Cache() []byte {
 	return c.cache[:c.cacheLen]
 }
 
-func (c *cachedReader) StopCaching() {
+func (c *CachedReader) StopCaching() {
 	c.caching = false
 }
 
-func (c *cachedReader) Read(p []byte) (int, error) {
+func (c *CachedReader) Read(p []byte) (int, error) {
 	n, err := c.buffer.Read(p)
 	if err != nil {
 		return n, err
