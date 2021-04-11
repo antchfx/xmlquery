@@ -331,8 +331,15 @@ func (sp *StreamParser) Read() (*Node, error) {
 	// Because this is a streaming read, we need to release/remove last
 	// target node from the node tree to free up memory.
 	if sp.p.streamNode != nil {
+		// We need to remove all siblings before the current stream node,
+		// because the document may contain unwanted nodes between the target
+		// ones (for example new line text node), which would otherwise
+		// accumulate as first childs, and slow down the stream over time
+		for sp.p.streamNode.PrevSibling != nil {
+			RemoveFromTree(sp.p.streamNode.PrevSibling)
+		}
+		sp.p.prev = sp.p.streamNode.Parent
 		RemoveFromTree(sp.p.streamNode)
-		sp.p.prev = sp.p.streamNodePrev
 		sp.p.streamNode = nil
 		sp.p.streamNodePrev = nil
 	}
