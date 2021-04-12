@@ -14,7 +14,7 @@ func (options ParserOptions) apply(parser *parser) {
 	}
 }
 
-// DecoderOptions implement the very same options that the standard
+// DecoderOptions implement the very same options than the standard
 // encoding/xml package. Please refer to this documentation:
 // https://golang.org/pkg/encoding/xml/#Decoder
 type DecoderOptions struct{
