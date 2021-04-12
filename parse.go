@@ -32,7 +32,13 @@ func LoadURL(url string) (*Node, error) {
 
 // Parse returns the parse tree for the XML from the given Reader.
 func Parse(r io.Reader) (*Node, error) {
+	return ParseWithOptions(r, ParserOptions{})
+}
+
+// ParseWithOptions is like parse, but with custom options
+func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 	p := createParser(r)
+	options.apply(p)
 	for {
 		_, err := p.parse()
 		if err == io.EOF {
@@ -301,6 +307,16 @@ type StreamParser struct {
 // streamElementFilter, if provided, cannot be successfully parsed and compiled
 // into a valid xpath query.
 func CreateStreamParser(r io.Reader, streamElementXPath string, streamElementFilter ...string) (*StreamParser, error) {
+    return CreateStreamParserWithOptions(r, ParserOptions{}, streamElementXPath, streamElementFilter...)
+}
+
+// CreateStreamParserWithOptions is like CreateStreamParser, but with custom options
+func CreateStreamParserWithOptions(
+	r io.Reader,
+	options ParserOptions,
+	streamElementXPath string,
+	streamElementFilter ...string,
+) (*StreamParser, error) {
 	elemXPath, err := getQuery(streamElementXPath)
 	if err != nil {
 		return nil, fmt.Errorf("invalid streamElementXPath '%s', err: %s", streamElementXPath, err.Error())
@@ -312,8 +328,10 @@ func CreateStreamParser(r io.Reader, streamElementXPath string, streamElementFil
 			return nil, fmt.Errorf("invalid streamElementFilter '%s', err: %s", streamElementFilter[0], err.Error())
 		}
 	}
+	parser := createParser(r)
+	options.apply(parser)
 	sp := &StreamParser{
-		p: createParser(r),
+		p: parser,
 	}
 	sp.p.streamElementXPath = elemXPath
 	sp.p.streamElementFilter = elemFilter
