@@ -159,3 +159,14 @@ func loadXML(s string) *Node {
 	}
 	return node
 }
+
+func TestMissingTextNodes(t *testing.T) {
+    doc := loadXML(`
+        <?xml version="1.0" encoding="utf-8"?>
+        <corpus><p>Lorem <a>ipsum</a> dolor</p></corpus>
+    `)
+    results := Find(doc, "//text()")
+    if len(results) != 3 {
+        t.Fatalf("Expected text nodes 3, got %d", len(results))
+    }
+}
