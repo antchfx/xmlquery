@@ -49,6 +49,10 @@ type Node struct {
 	level int // node level in the tree
 }
 
+func (n *Node) Level() int {
+	return n.level
+}
+
 // InnerText returns the text between the start and end tags of the object.
 func (n *Node) InnerText() string {
 	var output func(*bytes.Buffer, *Node)
