@@ -341,6 +341,12 @@ func testOutputXML(t *testing.T, msg string, expectedXML string, n *Node) {
 	}
 }
 
+func testOutputXMLString(t *testing.T, msg string, generatedXML string, expectedXML string) {
+	if generatedXML != expectedXML {
+		t.Fatalf("%s, expected XML: '%s', actual: '%s'", msg, expectedXML, generatedXML)
+	}
+}
+
 func TestStreamParser_Success1(t *testing.T) {
 	s := `
 	<ROOT>
@@ -473,4 +479,43 @@ func TestCDATA(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	testOutputXML(t, "first call result", `<CCC><![CDATA[c1]]></CCC>`, n)
+}
+
+func TestSerializationCDATAInput(t *testing.T) {
+	expected := `<?xml?><d><![CDATA[foo]]></d>`
+	s := `<d><![CDATA[foo]]></d>`
+	n, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testOutputXMLString(t, "should maintain cdata output", n.OutputXML(false), expected)
+}
+
+func TestSerializationCDATAFormattedInput(t *testing.T) {
+	expected := `<?xml?><d><![CDATA[foo]]></d>`
+	s := `<d>
+  <![CDATA[foo]]>
+</d>`
+
+	n, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testOutputXMLString(t, "should maintain cdata output", n.OutputXML(false), expected)
+}
+
+func TestSerializationCDATAFormattedInputExample1(t *testing.T) {
+	expected := `<?xml?><d>![CDATA[foo]]</d>`
+	s := `<d>
+  ![CDATA[foo]]
+</d>`
+
+	n, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testOutputXMLString(t, "should maintain cdata output", n.OutputXML(false), expected)
 }
