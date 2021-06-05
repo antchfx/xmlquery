@@ -420,3 +420,26 @@ func TestOutputXMLWithXMLInCDATA(t *testing.T) {
 		t.Errorf("the outputted xml escaped CDATA section")
 	}
 }
+
+func TestNodeLevel(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?>
+	<class_list>
+		<student>
+			<name xml:space="preserve"> Robert </name>
+			<grade>A+</grade>
+		</student>
+	</class_list>`
+	doc, _ := Parse(strings.NewReader(s))
+	if doc.Level() != 0 {
+		t.Errorf(`expected "%d", obtained "%d"`, 0, doc.Level())
+	}
+	n := FindOne(doc, "/class_list")
+	if n.Level() != 1 {
+		t.Errorf(`expected "%d", obtained "%d"`, 1, n.Level())
+	}
+	n = FindOne(doc, "/class_list/student/name")
+	if n.Level() != 3 {
+		t.Errorf(`expected "%d", obtained "%d"`, 3, n.Level())
+	}
+
+}
