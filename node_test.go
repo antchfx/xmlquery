@@ -326,15 +326,16 @@ func TestOutputXMLWithSpaceParent(t *testing.T) {
 	doc, _ := Parse(strings.NewReader(s))
 	t.Log(doc.OutputXML(true))
 
-	n := FindOne(doc, "/class_list/student/name")
 	expected := "<name> Robert </name>"
 	if g := doc.OutputXML(true); strings.Index(g, expected) == -1 {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
-	output := html.UnescapeString(doc.OutputXML(true))
-	if strings.Contains(output, "\n") {
-		t.Errorf("the outputted xml contains newlines")
+	n := FindOne(doc, "/class_list/student")
+	output := html.UnescapeString(n.OutputXML(false))
+	expected = "\n\t\t\t<name> Robert </name>\n\t\t\t<grade>A+</grade>\n\t\t"
+	if !(output == expected) {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, output)
 	}
 	t.Log(n.OutputXML(false))
 }
@@ -398,19 +399,19 @@ func TestOutputXMLWithSpaceOverwrittenToDefault(t *testing.T) {
 	doc, _ := Parse(strings.NewReader(s))
 	t.Log(doc.OutputXML(true))
 
-	n := FindOne(doc, "/class_list/student")
 	expected := `<name xml:space="default">Robert</name>`
 	if g := doc.OutputXML(false); strings.Index(g, expected) == -1 {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
-	output := html.UnescapeString(doc.OutputXML(true))
-	if strings.Contains(output, "\n") {
-		t.Errorf("the outputted xml contains newlines")
+	n := FindOne(doc, "/class_list/student")
+	output := html.UnescapeString(n.OutputXML(false))
+	expected = "\n\t\t\t<name xml:space=\"default\">Robert</name>\n\t\t\t<grade>A+</grade>\n\t\t"
+	if !(output == expected) {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, output)
 	}
 	t.Log(n.OutputXML(false))
 }
-
 
 func TestOutputXMLWithXMLInCDATA(t *testing.T) {
 	s := `<?xml version="1.0" encoding="utf-8"?><node><![CDATA[<greeting>Hello, world!</greeting>]]></node>`

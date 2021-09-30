@@ -71,7 +71,7 @@ func (n *Node) InnerText() string {
 
 func (n *Node) sanitizedData(preserveSpaces bool) string {
 	if preserveSpaces {
-		return strings.Trim(n.Data, "\n\t")
+		return n.Data
 	}
 	return strings.TrimSpace(n.Data)
 }
@@ -140,12 +140,13 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 
 // OutputXML returns the text that including tags name.
 func (n *Node) OutputXML(self bool) string {
+	preserveSpaces := calculatePreserveSpaces(n, false)
 	var buf bytes.Buffer
 	if self {
-		outputXML(&buf, n, false)
+		outputXML(&buf, n, preserveSpaces)
 	} else {
 		for n := n.FirstChild; n != nil; n = n.NextSibling {
-			outputXML(&buf, n, false)
+			outputXML(&buf, n, preserveSpaces)
 		}
 	}
 
