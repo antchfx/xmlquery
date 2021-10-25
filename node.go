@@ -142,7 +142,7 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 func (n *Node) OutputXML(self bool) string {
 	preserveSpaces := calculatePreserveSpaces(n, false)
 	var buf bytes.Buffer
-	if self {
+	if self && n.Type != DocumentNode {
 		outputXML(&buf, n, preserveSpaces)
 	} else {
 		for n := n.FirstChild; n != nil; n = n.NextSibling {
