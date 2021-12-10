@@ -246,6 +246,11 @@ func (p *parser) parse() (*Node, error) {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
 				AddChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
+				}
+				AddSibling(p.prev.Parent, node)
 			}
 			p.prev = node
 		case xml.Directive:
@@ -307,7 +312,7 @@ type StreamParser struct {
 // streamElementFilter, if provided, cannot be successfully parsed and compiled
 // into a valid xpath query.
 func CreateStreamParser(r io.Reader, streamElementXPath string, streamElementFilter ...string) (*StreamParser, error) {
-    return CreateStreamParserWithOptions(r, ParserOptions{}, streamElementXPath, streamElementFilter...)
+	return CreateStreamParserWithOptions(r, ParserOptions{}, streamElementXPath, streamElementFilter...)
 }
 
 // CreateStreamParserWithOptions is like CreateStreamParser, but with custom options
