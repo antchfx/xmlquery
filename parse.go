@@ -79,10 +79,34 @@ func createParser(r io.Reader) *parser {
 	return p
 }
 
+func (p *parser) getPrefix() (string, error) {
+	buf, err := p.reader.buffer.Peek(50)
+	if err != nil && (err != bufio.ErrBufferFull && err != io.EOF) {
+		return "", err
+	}
+	var start int = -1
+	for i := range buf {
+		switch buf[i] {
+		case '<':
+			start = i
+		case ':':
+			return string(buf[start+1 : i]), nil
+		case '\t', '\n', '\v', '\f', '\r', ' ', 0x85, 0xA0, '>':
+			return "", nil
+		}
+	}
+
+	return "", nil
+}
+
 func (p *parser) parse() (*Node, error) {
 	var streamElementNodeCounter int
 
 	for {
+		prefix, err := p.getPrefix()
+		if err != nil {
+			return nil, err
+		}
 		tok, err := p.decoder.Token()
 		if err != nil {
 			return nil, err
@@ -128,10 +152,14 @@ func (p *parser) parse() (*Node, error) {
 			node := &Node{
 				Type:         ElementNode,
 				Data:         tok.Name.Local,
-				Prefix:       p.space2prefix[tok.Name.Space],
 				NamespaceURI: tok.Name.Space,
 				Attr:         attributes,
 				level:        p.level,
+			}
+			if prefix != "" {
+				node.Prefix = prefix
+			} else {
+				node.Prefix = p.space2prefix[tok.Name.Space]
 			}
 
 			if p.level == p.prev.level {
