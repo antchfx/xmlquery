@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"strings"
 )
 
@@ -89,7 +90,7 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 	preserveSpaces = calculatePreserveSpaces(n, preserveSpaces)
 	switch n.Type {
 	case TextNode:
-		xml.EscapeText(buf, []byte(n.sanitizedData(preserveSpaces)))
+		buf.WriteString(html.EscapeString(n.sanitizedData(preserveSpaces)))
 		return
 	case CharDataNode:
 		buf.WriteString("<![CDATA[")
@@ -118,7 +119,7 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 			buf.WriteString(fmt.Sprintf(` %s=`, attr.Name.Local))
 		}
 		buf.WriteByte('"')
-		xml.EscapeText(buf, []byte(attr.Value))
+		buf.WriteString(html.EscapeString(attr.Value))
 		buf.WriteByte('"')
 	}
 	if n.Type == DeclarationNode {
