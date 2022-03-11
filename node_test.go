@@ -305,6 +305,28 @@ func TestUnnecessaryEscapeOutputValue(t *testing.T) {
 	}
 
 }
+
+func TestHtmlUnescapeStringOriginString(t *testing.T) {
+	// has escape html character and \t
+	data := `<?xml version="1.0" encoding="utf-8"?>
+	<example xml:space="preserve"><word>&amp;#48;		</word></example>`
+
+	root, err := Parse(strings.NewReader(data))
+	if err != nil {
+		t.Error(err)
+	}
+
+	escapedInnerText := root.OutputXML(false)
+	unescapeString := html.UnescapeString(escapedInnerText)
+	if strings.Contains(unescapeString, "&amp;") {
+		t.Fatal("&amp; need unescape")
+	}
+	if !strings.Contains(escapedInnerText, "&amp;#48;\t\t") {
+		t.Fatal("Inner Text should keep plain text")
+	}
+
+}
+
 func TestOutputXMLWithNamespacePrefix(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body></S:Body></S:Envelope>`
 	doc, _ := Parse(strings.NewReader(s))
