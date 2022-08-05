@@ -107,7 +107,7 @@ func (p *parser) parse() (*Node, error) {
 			}
 
 			if tok.Name.Space != "" {
-				if _, found := p.space2prefix[tok.Name.Space]; !found {
+				if _, found := p.space2prefix[tok.Name.Space]; !found && p.decoder.Strict {
 					return nil, errors.New("xmlquery: invalid XML document, namespace is missing")
 				}
 			}
