@@ -474,3 +474,19 @@ func TestCDATA(t *testing.T) {
 	}
 	testOutputXML(t, "first call result", `<CCC><![CDATA[c1]]></CCC>`, n)
 }
+
+func TestXMLPreservation(t *testing.T) {
+	s := `
+	<?xml version="1.0" encoding="UTF-8"?>
+	<AAA>
+		<CCC><![CDATA[c1]]></CCC>
+	</AAA>`
+
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testOutputXML(t, "first call result",
+		`<?xml version="1.0" encoding="UTF-8"?><AAA><CCC><![CDATA[c1]]></CCC></AAA>`, doc)
+}
