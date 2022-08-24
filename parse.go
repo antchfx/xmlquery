@@ -92,7 +92,15 @@ func (p *parser) parse() (*Node, error) {
 		case xml.StartElement:
 			if p.level == 0 {
 				// mising XML declaration
-				node := &Node{Type: DeclarationNode, Data: "xml", level: 1}
+				attributes := make([]Attr, 1)
+				attributes[0].Name = xml.Name{Local: "version"}
+				attributes[0].Value = "1.0"
+				node := &Node{
+					Type: DeclarationNode,
+					Data: "xml",
+					Attr: attributes,
+					level: 1,
+				}
 				AddChild(p.prev, node)
 				p.level = 1
 				p.prev = node
