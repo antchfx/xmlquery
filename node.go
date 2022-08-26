@@ -173,7 +173,7 @@ func AddAttr(n *Node, key, val string) {
 }
 
 // SetAttr allows an attribute value with the specified name to be changed.
-// If the attribute did not previously exist, it will be creted.
+// If the attribute did not previously exist, it will be created.
 func (n *Node) SetAttr(key, value string) {
 	if i := strings.Index(key, ":"); i > 0 {
 		space := key[:i]
