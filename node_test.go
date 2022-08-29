@@ -193,7 +193,7 @@ func TestSetAttr(t *testing.T) {
 	}
 }
 
-func TestUnsetAttr(t *testing.T) {
+func TestRemoveAttr(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		n        *Node
@@ -228,7 +228,7 @@ func TestUnsetAttr(t *testing.T) {
 	} {
 
 		t.Run(test.name, func(t *testing.T) {
-			test.n.UnsetAttr(test.key)
+			test.n.RemoveAttr(test.key)
 			testValue(t, test.n.OutputXML(true), test.expected)
 		})
 	}

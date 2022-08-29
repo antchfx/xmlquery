@@ -198,8 +198,8 @@ func (n *Node) SetAttr(key, value string) {
 	}
 }
 
-// UnsetAttr removes the attribute with the specified name.
-func (n *Node) UnsetAttr(key string) {
+// RemoveAttr removes the attribute with the specified name.
+func (n *Node) RemoveAttr(key string) {
 	removeIdx := -1
 	if i := strings.Index(key, ":"); i > 0 {
 		space := key[:i]
