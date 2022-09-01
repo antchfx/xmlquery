@@ -172,6 +172,55 @@ func AddAttr(n *Node, key, val string) {
 	n.Attr = append(n.Attr, attr)
 }
 
+// SetAttr allows an attribute value with the specified name to be changed.
+// If the attribute did not previously exist, it will be created.
+func (n *Node) SetAttr(key, value string) {
+	if i := strings.Index(key, ":"); i > 0 {
+		space := key[:i]
+		local := key[i+1:]
+		for idx := 0; idx < len(n.Attr); idx++ {
+			if n.Attr[idx].Name.Space == space && n.Attr[idx].Name.Local == local {
+				n.Attr[idx].Value = value
+				return
+			}
+		}
+
+		AddAttr(n, key, value)
+	} else {
+		for idx := 0; idx < len(n.Attr); idx++ {
+			if n.Attr[idx].Name.Local == key {
+				n.Attr[idx].Value = value
+				return
+			}
+		}
+
+		AddAttr(n, key, value)
+	}
+}
+
+// RemoveAttr removes the attribute with the specified name.
+func (n *Node) RemoveAttr(key string) {
+	removeIdx := -1
+	if i := strings.Index(key, ":"); i > 0 {
+		space := key[:i]
+		local := key[i+1:]
+		for idx := 0; idx < len(n.Attr); idx++ {
+			if n.Attr[idx].Name.Space == space && n.Attr[idx].Name.Local == local {
+				removeIdx = idx
+			}
+		}
+	} else {
+		for idx := 0; idx < len(n.Attr); idx++ {
+			if n.Attr[idx].Name.Local == key {
+				removeIdx = idx
+			}
+		}
+	}
+	if removeIdx != -1 {
+		n.Attr = append(n.Attr[:removeIdx], n.Attr[removeIdx+1:]...)
+	}
+}
+
 // AddChild adds a new node 'n' to a node 'parent' as its last child.
 func AddChild(parent, n *Node) {
 	n.Parent = parent

@@ -147,6 +147,94 @@ func TestAddAttr(t *testing.T) {
 	}
 }
 
+func TestSetAttr(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		n        *Node
+		key      string
+		val      string
+		expected string
+	}{
+		{
+			name:     "node has no existing attr",
+			n:        &Node{Type: AttributeNode},
+			key:      "ns:k1",
+			val:      "v1",
+			expected: `< ns:k1="v1"></>`,
+		},
+		{
+			name:     "node has an existing attr, overwriting",
+			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Space: "ns", Local: "k1"}, Value: "v1"}}},
+			key:      "ns:k1",
+			val:      "v2",
+			expected: `< ns:k1="v2"></>`,
+		},
+		{
+			name:     "node has no existing attr, no ns",
+			n:        &Node{Type: AttributeNode},
+			key:      "k1",
+			val:      "v1",
+			expected: `< k1="v1"></>`,
+		},
+		{
+			name:     "node has an existing attr, no ns, overwriting",
+			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Local: "k1"}, Value: "v1"}}},
+			key:      "k1",
+			val:      "v2",
+			expected: `< k1="v2"></>`,
+		},
+
+	} {
+
+		t.Run(test.name, func(t *testing.T) {
+			test.n.SetAttr(test.key, test.val)
+			testValue(t, test.n.OutputXML(true), test.expected)
+		})
+	}
+}
+
+func TestRemoveAttr(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		n        *Node
+		key      string
+		expected string
+	}{
+		{
+			name:     "node has no existing attr",
+			n:        &Node{Type: AttributeNode},
+			key:      "ns:k1",
+			expected: `<></>`,
+		},
+		{
+			name:     "node has an existing attr, overwriting",
+			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Space: "ns", Local: "k1"}, Value: "v1"}}},
+			key:      "ns:k1",
+			expected: `<></>`,
+		},
+		{
+			name:     "node has no existing attr, no ns",
+			n:        &Node{Type: AttributeNode},
+			key:      "k1",
+			expected: `<></>`,
+		},
+		{
+			name:     "node has an existing attr, no ns, overwriting",
+			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Local: "k1"}, Value: "v1"}}},
+			key:      "k1",
+			expected: `<></>`,
+		},
+
+	} {
+
+		t.Run(test.name, func(t *testing.T) {
+			test.n.RemoveAttr(test.key)
+			testValue(t, test.n.OutputXML(true), test.expected)
+		})
+	}
+}
+
+
 func TestRemoveFromTree(t *testing.T) {
 	xml := `<?procinst?>
 		<!--comment-->
