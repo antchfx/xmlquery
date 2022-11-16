@@ -183,7 +183,6 @@ func TestSetAttr(t *testing.T) {
 			val:      "v2",
 			expected: `< k1="v2"></>`,
 		},
-
 	} {
 
 		t.Run(test.name, func(t *testing.T) {
@@ -224,7 +223,6 @@ func TestRemoveAttr(t *testing.T) {
 			key:      "k1",
 			expected: `<></>`,
 		},
-
 	} {
 
 		t.Run(test.name, func(t *testing.T) {
@@ -233,7 +231,6 @@ func TestRemoveAttr(t *testing.T) {
 		})
 	}
 }
-
 
 func TestRemoveFromTree(t *testing.T) {
 	xml := `<?procinst?>
@@ -554,5 +551,29 @@ func TestOutputXMLWithXMLInCDATA(t *testing.T) {
 	t.Log(doc.OutputXML(false))
 	if doc.OutputXML(false) != s {
 		t.Errorf("the outputted xml escaped CDATA section")
+	}
+}
+
+func TestOutputXMLWithDefaultOptions(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?><node><empty></empty></node>`
+	expected := `<?xml version="1.0" encoding="utf-8"?><node><empty></empty></node>`
+
+	doc, _ := Parse(strings.NewReader(s))
+	result := doc.OutputXMLWithOptions()
+	t.Log(result)
+	if result != expected {
+		t.Errorf("output was not expected. expected %v but got %v", expected, result)
+	}
+}
+
+func TestOutputXMLWithOptions(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?><node><empty></empty></node>`
+	expected := `<?xml version="1.0" encoding="utf-8"?><node><empty/></node>`
+
+	doc, _ := Parse(strings.NewReader(s))
+	result := doc.OutputXMLWithOptions(WithEmptyTagSupport())
+	t.Log(result)
+	if result != expected {
+		t.Errorf("output was not expected. expected %v but got %v", expected, result)
 	}
 }

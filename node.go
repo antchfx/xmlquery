@@ -50,6 +50,29 @@ type Node struct {
 	level int // node level in the tree
 }
 
+type outputConfiguration struct {
+	printSelf              bool
+	preserveSpaces         bool
+	emptyElementTagSupport bool
+}
+
+type OutputOption func(*outputConfiguration)
+
+// WithOutputSelf configures the Node to print the root node itself
+func WithOutputSelf() OutputOption {
+	return func(oc *outputConfiguration) {
+		oc.printSelf = true
+	}
+}
+
+// WithEmptyTagSupport empty tags should be written as <empty/> and
+// not as <empty></empty>
+func WithEmptyTagSupport() OutputOption {
+	return func(oc *outputConfiguration) {
+		oc.emptyElementTagSupport = true
+	}
+}
+
 // InnerText returns the text between the start and end tags of the object.
 func (n *Node) InnerText() string {
 	var output func(*bytes.Buffer, *Node)
@@ -86,7 +109,7 @@ func calculatePreserveSpaces(n *Node, pastValue bool) bool {
 	return pastValue
 }
 
-func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
+func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool, config *outputConfiguration) {
 	preserveSpaces = calculatePreserveSpaces(n, preserveSpaces)
 	switch n.Type {
 	case TextNode:
@@ -125,10 +148,15 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 	if n.Type == DeclarationNode {
 		buf.WriteString("?>")
 	} else {
-		buf.WriteString(">")
+		if n.FirstChild != nil || !config.emptyElementTagSupport {
+			buf.WriteString(">")
+		} else {
+			buf.WriteString("/>")
+			return
+		}
 	}
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		outputXML(buf, child, preserveSpaces)
+		outputXML(buf, child, preserveSpaces, config)
 	}
 	if n.Type != DeclarationNode {
 		if n.Prefix == "" {
@@ -141,13 +169,40 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool) {
 
 // OutputXML returns the text that including tags name.
 func (n *Node) OutputXML(self bool) string {
+
+	config := &outputConfiguration{
+		printSelf:              true,
+		emptyElementTagSupport: false,
+	}
 	preserveSpaces := calculatePreserveSpaces(n, false)
 	var buf bytes.Buffer
 	if self && n.Type != DocumentNode {
-		outputXML(&buf, n, preserveSpaces)
+		outputXML(&buf, n, preserveSpaces, config)
 	} else {
 		for n := n.FirstChild; n != nil; n = n.NextSibling {
-			outputXML(&buf, n, preserveSpaces)
+			outputXML(&buf, n, preserveSpaces, config)
+		}
+	}
+
+	return buf.String()
+}
+
+// OutputXMLWithOptions returns the text that including tags name.
+func (n *Node) OutputXMLWithOptions(opts ...OutputOption) string {
+
+	config := &outputConfiguration{}
+	// Set the options
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	preserveSpaces := calculatePreserveSpaces(n, false)
+	var buf bytes.Buffer
+	if config.printSelf && n.Type != DocumentNode {
+		outputXML(&buf, n, preserveSpaces, config)
+	} else {
+		for n := n.FirstChild; n != nil; n = n.NextSibling {
+			outputXML(&buf, n, preserveSpaces, config)
 		}
 	}
 
