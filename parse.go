@@ -3,7 +3,6 @@ package xmlquery
 import (
 	"bufio"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -96,9 +95,9 @@ func (p *parser) parse() (*Node, error) {
 				attributes[0].Name = xml.Name{Local: "version"}
 				attributes[0].Value = "1.0"
 				node := &Node{
-					Type: DeclarationNode,
-					Data: "xml",
-					Attr: attributes,
+					Type:  DeclarationNode,
+					Data:  "xml",
+					Attr:  attributes,
 					level: 1,
 				}
 				AddChild(p.prev, node)
@@ -114,9 +113,9 @@ func (p *parser) parse() (*Node, error) {
 				}
 			}
 
-			if tok.Name.Space != "" {
-				if _, found := p.space2prefix[tok.Name.Space]; !found && p.decoder.Strict {
-					return nil, errors.New("xmlquery: invalid XML document, namespace is missing")
+			if space := tok.Name.Space; space != "" {
+				if _, found := p.space2prefix[space]; !found && p.decoder.Strict {
+					return nil, fmt.Errorf("xmlquery: invalid XML document, namespace %s is missing", space)
 				}
 			}
 
