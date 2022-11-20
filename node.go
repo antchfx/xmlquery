@@ -54,6 +54,7 @@ type outputConfiguration struct {
 	printSelf              bool
 	preserveSpaces         bool
 	emptyElementTagSupport bool
+	skipComments           bool
 }
 
 type OutputOption func(*outputConfiguration)
@@ -70,6 +71,13 @@ func WithOutputSelf() OutputOption {
 func WithEmptyTagSupport() OutputOption {
 	return func(oc *outputConfiguration) {
 		oc.emptyElementTagSupport = true
+	}
+}
+
+// WithoutComments will skip comments in output
+func WithoutComments() OutputOption {
+	return func(oc *outputConfiguration) {
+		oc.skipComments = true
 	}
 }
 
@@ -121,9 +129,11 @@ func outputXML(buf *bytes.Buffer, n *Node, preserveSpaces bool, config *outputCo
 		buf.WriteString("]]>")
 		return
 	case CommentNode:
-		buf.WriteString("<!--")
-		buf.WriteString(n.Data)
-		buf.WriteString("-->")
+		if !config.skipComments {
+			buf.WriteString("<!--")
+			buf.WriteString(n.Data)
+			buf.WriteString("-->")
+		}
 		return
 	case DeclarationNode:
 		buf.WriteString("<?" + n.Data)
