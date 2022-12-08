@@ -116,7 +116,7 @@ func TestNamespaceURL(t *testing.T) {
 	if strings.Index(top.InnerText(), "author") > 0 {
 		t.Fatalf("InnerText() include comment node text")
 	}
-	if strings.Index(top.OutputXML(true), "author") == -1 {
+	if !strings.Contains(top.OutputXML(true), "author") {
 		t.Fatal("OutputXML shoud include comment node,but not")
 	}
 }

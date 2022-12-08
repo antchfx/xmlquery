@@ -437,12 +437,12 @@ func TestOutputXMLWithCommentNode(t *testing.T) {
 	</class_list>`
 	doc, _ := Parse(strings.NewReader(s))
 	t.Log(doc.OutputXML(true))
-	if e, g := "<!-- Students grades are updated bi-monthly -->", doc.OutputXML(true); strings.Index(g, e) == -1 {
+	if e, g := "<!-- Students grades are updated bi-monthly -->", doc.OutputXML(true); !strings.Contains(g, e) {
 		t.Fatal("missing some comment-node.")
 	}
 	n := FindOne(doc, "//class_list")
 	t.Log(n.OutputXML(false))
-	if e, g := "<name>Lenard</name>", n.OutputXML(false); strings.Index(g, e) == -1 {
+	if e, g := "<name>Lenard</name>", n.OutputXML(false); !strings.Contains(g, e) {
 		t.Fatal("missing some comment-node")
 	}
 }
@@ -459,7 +459,7 @@ func TestOutputXMLWithSpaceParent(t *testing.T) {
 	t.Log(doc.OutputXML(true))
 
 	expected := "<name> Robert </name>"
-	if g := doc.OutputXML(true); strings.Index(g, expected) == -1 {
+	if g := doc.OutputXML(true); !strings.Contains(g, expected) {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
@@ -485,7 +485,7 @@ func TestOutputXMLWithSpaceDirect(t *testing.T) {
 
 	n := FindOne(doc, "/class_list/student/name")
 	expected := `<name xml:space="preserve"> Robert </name>`
-	if g := doc.OutputXML(false); strings.Index(g, expected) == -1 {
+	if g := doc.OutputXML(false); !strings.Contains(g, expected) {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
@@ -509,7 +509,7 @@ func TestOutputXMLWithSpaceOverwrittenToPreserve(t *testing.T) {
 
 	n := FindOne(doc, "/class_list/student")
 	expected := `<name xml:space="preserve"> Robert </name>`
-	if g := n.OutputXML(false); strings.Index(g, expected) == -1 {
+	if g := n.OutputXML(false); !strings.Contains(g, expected) {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
@@ -532,7 +532,7 @@ func TestOutputXMLWithSpaceOverwrittenToDefault(t *testing.T) {
 	t.Log(doc.OutputXML(true))
 
 	expected := `<name xml:space="default">Robert</name>`
-	if g := doc.OutputXML(false); strings.Index(g, expected) == -1 {
+	if g := doc.OutputXML(false); !strings.Contains(g, expected) {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
