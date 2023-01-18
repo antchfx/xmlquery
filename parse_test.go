@@ -89,6 +89,56 @@ func TestLoadURLFailure(t *testing.T) {
 	}
 }
 
+func TestDefaultNamespace_1(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+	<svg
+	   xmlns:svg="http://www.w3.org/2000/svg"
+	   xmlns="http://www.w3.org/2000/svg"
+	>
+	   <text xml:space="preserve">
+		  <tspan>Multiline</tspan>
+		  <tspan>Multiline text</tspan>
+	   </text>
+	</svg>`
+
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := FindOne(doc, "//svg"); n == nil {
+		t.Fatal("should find a `svg` but got nil")
+	}
+	list := Find(doc, "//tspan")
+	if found, expected := len(list), 2; found != expected {
+		t.Fatalf("should found %d tspan but found %d", expected, found)
+	}
+}
+
+func TestDefaultNamespace_2(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+	<svg
+	   xmlns="http://www.w3.org/2000/svg"
+	   xmlns:svg="http://www.w3.org/2000/svg"
+	>
+	   <text xml:space="preserve">
+		  <tspan>Multiline</tspan>
+		  <tspan>Multiline text</tspan>
+	   </text>
+	</svg>`
+
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := FindOne(doc, "//svg"); n == nil {
+		t.Fatal("should find a `svg` but got nil")
+	}
+	list := Find(doc, "//tspan")
+	if found, expected := len(list), 2; found != expected {
+		t.Fatalf("should found %d tspan but found %d", expected, found)
+	}
+}
+
 func TestNamespaceURL(t *testing.T) {
 	s := `
 <?xml version="1.0"?>
