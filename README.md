@@ -110,7 +110,7 @@ doc, err := xmlquery.Parse(f)
 #### Parse an XML in a stream fashion (simple case without elements filtering).
 
 ```go
-f, err := os.Open("../books.xml")
+f, _ := os.Open("../books.xml")
 p, err := xmlquery.CreateStreamParser(f, "/bookstore/book")
 for {
 	n, err := p.Read()
@@ -118,15 +118,18 @@ for {
 		break
 	}
 	if err != nil {
-		...
+		panic(err)
 	}
+	fmt.Println(n)
 }
 ```
+
+Notes: `CreateStreamParser()` used for saving memory if your had a large XML file to parse.
 
 #### Parse an XML in a stream fashion (simple case advanced element filtering).
 
 ```go
-f, err := os.Open("../books.xml")
+f, _ := os.Open("../books.xml")
 p, err := xmlquery.CreateStreamParser(f, "/bookstore/book", "/bookstore/book[price>=10]")
 for {
 	n, err := p.Read()
@@ -134,8 +137,9 @@ for {
 		break
 	}
 	if err != nil {
-		...
+		panic(err)
 	}
+	fmt.Println(n)
 }
 ```
 
