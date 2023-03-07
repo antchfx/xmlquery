@@ -140,15 +140,15 @@ func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputC
 		if n.Prefix == "" {
 			b.WriteString("<" + n.Data)
 		} else {
-			b.WriteString("<" + n.Prefix + ":" + n.Data)
+			fmt.Fprintf(b, "<%s:%s", n.Prefix, n.Data)
 		}
 	}
 
 	for _, attr := range n.Attr {
 		if attr.Name.Space != "" {
-			b.WriteString(fmt.Sprintf(` %s:%s=`, attr.Name.Space, attr.Name.Local))
+			fmt.Fprintf(b, ` %s:%s=`, attr.Name.Space, attr.Name.Local)
 		} else {
-			b.WriteString(fmt.Sprintf(` %s=`, attr.Name.Local))
+			fmt.Fprintf(b, ` %s=`, attr.Name.Local)
 		}
 		b.WriteByte('"')
 		b.WriteString(html.EscapeString(attr.Value))
@@ -169,9 +169,9 @@ func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputC
 	}
 	if n.Type != DeclarationNode {
 		if n.Prefix == "" {
-			b.WriteString(fmt.Sprintf("</%s>", n.Data))
+			fmt.Fprintf(b, "</%s>", n.Data)
 		} else {
-			b.WriteString(fmt.Sprintf("</%s:%s>", n.Prefix, n.Data))
+			fmt.Fprintf(b, "</%s:%s>", n.Prefix, n.Data)
 		}
 	}
 }
