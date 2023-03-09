@@ -80,6 +80,18 @@ func WithoutComments() OutputOption {
 	}
 }
 
+func newXMLName(name string) xml.Name {
+	if i := strings.IndexByte(name, ':'); i > 0 {
+		return xml.Name{
+			Space: name[:i],
+			Local: name[i+1:],
+		}
+	}
+	return xml.Name{
+		Local: name,
+	}
+}
+
 // InnerText returns the text between the start and end tags of the object.
 func (n *Node) InnerText() string {
 	var output func(*strings.Builder, *Node)
@@ -140,15 +152,15 @@ func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputC
 		if n.Prefix == "" {
 			b.WriteString("<" + n.Data)
 		} else {
-			b.WriteString("<" + n.Prefix + ":" + n.Data)
+			fmt.Fprintf(b, "<%s:%s", n.Prefix, n.Data)
 		}
 	}
 
 	for _, attr := range n.Attr {
 		if attr.Name.Space != "" {
-			b.WriteString(fmt.Sprintf(` %s:%s=`, attr.Name.Space, attr.Name.Local))
+			fmt.Fprintf(b, ` %s:%s=`, attr.Name.Space, attr.Name.Local)
 		} else {
-			b.WriteString(fmt.Sprintf(` %s=`, attr.Name.Local))
+			fmt.Fprintf(b, ` %s=`, attr.Name.Local)
 		}
 		b.WriteByte('"')
 		b.WriteString(html.EscapeString(attr.Value))
@@ -169,9 +181,9 @@ func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputC
 	}
 	if n.Type != DeclarationNode {
 		if n.Prefix == "" {
-			b.WriteString(fmt.Sprintf("</%s>", n.Data))
+			fmt.Fprintf(b, "</%s>", n.Data)
 		} else {
-			b.WriteString(fmt.Sprintf("</%s:%s>", n.Prefix, n.Data))
+			fmt.Fprintf(b, "</%s:%s>", n.Prefix, n.Data)
 		}
 	}
 }
@@ -220,68 +232,34 @@ func (n *Node) OutputXMLWithOptions(opts ...OutputOption) string {
 
 // AddAttr adds a new attribute specified by 'key' and 'val' to a node 'n'.
 func AddAttr(n *Node, key, val string) {
-	var attr Attr
-	if i := strings.Index(key, ":"); i > 0 {
-		attr = Attr{
-			Name:  xml.Name{Space: key[:i], Local: key[i+1:]},
-			Value: val,
-		}
-	} else {
-		attr = Attr{
-			Name:  xml.Name{Local: key},
-			Value: val,
-		}
+	attr := Attr{
+		Name:  newXMLName(key),
+		Value: val,
 	}
-
 	n.Attr = append(n.Attr, attr)
 }
 
 // SetAttr allows an attribute value with the specified name to be changed.
 // If the attribute did not previously exist, it will be created.
 func (n *Node) SetAttr(key, value string) {
-	if i := strings.Index(key, ":"); i > 0 {
-		space := key[:i]
-		local := key[i+1:]
-		for idx := 0; idx < len(n.Attr); idx++ {
-			if n.Attr[idx].Name.Space == space && n.Attr[idx].Name.Local == local {
-				n.Attr[idx].Value = value
-				return
-			}
+	name := newXMLName(key)
+	for i, attr := range n.Attr {
+		if attr.Name == name {
+			n.Attr[i].Value = value
+			return
 		}
-
-		AddAttr(n, key, value)
-	} else {
-		for idx := 0; idx < len(n.Attr); idx++ {
-			if n.Attr[idx].Name.Local == key {
-				n.Attr[idx].Value = value
-				return
-			}
-		}
-
-		AddAttr(n, key, value)
 	}
+	AddAttr(n, key, value)
 }
 
 // RemoveAttr removes the attribute with the specified name.
 func (n *Node) RemoveAttr(key string) {
-	removeIdx := -1
-	if i := strings.Index(key, ":"); i > 0 {
-		space := key[:i]
-		local := key[i+1:]
-		for idx := 0; idx < len(n.Attr); idx++ {
-			if n.Attr[idx].Name.Space == space && n.Attr[idx].Name.Local == local {
-				removeIdx = idx
-			}
+	name := newXMLName(key)
+	for i, attr := range n.Attr {
+		if attr.Name == name {
+			n.Attr = append(n.Attr[:i], n.Attr[i+1:]...)
+			return
 		}
-	} else {
-		for idx := 0; idx < len(n.Attr); idx++ {
-			if n.Attr[idx].Name.Local == key {
-				removeIdx = idx
-			}
-		}
-	}
-	if removeIdx != -1 {
-		n.Attr = append(n.Attr[:removeIdx], n.Attr[removeIdx+1:]...)
 	}
 }
 
