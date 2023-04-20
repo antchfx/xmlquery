@@ -106,13 +106,19 @@ func (p *parser) parse() (*Node, error) {
 			}
 			// https://www.w3.org/TR/xml-names/#scoping-defaulting
 			var defaultNamespaceURL string
+			// [#102], If found the duplicate NamespaceURL, we should saving into the loca
+			// and use it instead of p.space2prefix.
+			local_space2prefix := make(map[string]string)
 			for _, att := range tok.Attr {
 				if att.Name.Local == "xmlns" {
 					p.space2prefix[att.Value] = "" // reset empty if exist the default namespace
+					local_space2prefix[att.Value] = ""
 					defaultNamespaceURL = att.Value
 				} else if att.Name.Space == "xmlns" {
 					if _, ok := p.space2prefix[att.Value]; !ok {
 						p.space2prefix[att.Value] = att.Name.Local
+					} else if defaultNamespaceURL != att.Value {
+						local_space2prefix[att.Value] = att.Name.Local
 					}
 				}
 			}
@@ -155,10 +161,16 @@ func (p *parser) parse() (*Node, error) {
 				AddSibling(p.prev.Parent, node)
 			}
 			if node.NamespaceURI != "" {
-				node.Prefix = p.space2prefix[node.NamespaceURI]
+				var keepPrefix bool = true
+				if prefix, ok := local_space2prefix[node.NamespaceURI]; ok {
+					keepPrefix = true
+					node.Prefix = prefix
+				} else {
+					node.Prefix = p.space2prefix[node.NamespaceURI]
+				}
 				if defaultNamespaceURL != "" && node.NamespaceURI == defaultNamespaceURL {
 					node.Prefix = ""
-				} else if n := node.Parent; n != nil && node.NamespaceURI == n.NamespaceURI {
+				} else if n := node.Parent; n != nil && !keepPrefix && node.NamespaceURI == n.NamespaceURI {
 					node.Prefix = n.Prefix
 				}
 			}

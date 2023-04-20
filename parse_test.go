@@ -139,6 +139,28 @@ func TestDefaultNamespace_2(t *testing.T) {
 	}
 }
 
+func TestDuplicateNamespaceURL(t *testing.T) {
+	s := `<?xml version='1.0' encoding='UTF-8'?>
+	<S:Envelope
+		xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+		<S:Body test="1">
+			<ns2:Fault
+				xmlns:ns2="http://schemas.xmlsoap.org/soap/envelope/"
+				xmlns:ns3="http://www.w3.org/2003/05/soap-envelope">
+				<faultcode>ns2:Client</faultcode>
+				<faultstring>This is a client fault</faultstring>
+			</ns2:Fault>
+		</S:Body>
+	</S:Envelope>`
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n2 := FindOne(doc, `//S:Envelope/S:Body/ns2:Fault/faultcode`)
+	if n2 == nil {
+		t.Fatalf("should fount one but nil")
+	}
+}
 func TestNamespaceURL(t *testing.T) {
 	s := `
 <?xml version="1.0"?>
