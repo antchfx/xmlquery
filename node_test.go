@@ -420,6 +420,21 @@ func TestOutputXMLWithNamespacePrefix(t *testing.T) {
 	}
 }
 
+func TestQueryWithPrefix(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8"?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body test="1"><ns2:Fault xmlns:ns2="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope"><faultcode>ns2:Client</faultcode><faultstring>This is a client fault</faultstring></ns2:Fault></S:Body></S:Envelope>`
+	doc, _ := Parse(strings.NewReader(s))
+	n, err := Query(doc, `//S:Envelope/S:Body/ns2:Fault/faultcode`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n == nil {
+		t.Fatalf("should found one but got nil")
+	}
+	if expected, v := "ns2:Client", n.InnerText(); expected != v {
+		t.Fatalf("expected %s but got %s", expected, v)
+	}
+}
+
 func TestOutputXMLWithCommentNode(t *testing.T) {
 	s := `<?xml version="1.0" encoding="utf-8"?>
 	<!-- Students grades are updated bi-monthly -->

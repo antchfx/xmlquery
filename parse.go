@@ -52,7 +52,6 @@ func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 type parser struct {
 	decoder             *xml.Decoder
 	doc                 *Node
-	space2prefix        map[string]string
 	level               int
 	prev                *Node
 	streamElementXPath  *xpath.Expr   // Under streaming mode, this specifies the xpath to the target element node(s).
@@ -65,14 +64,11 @@ type parser struct {
 func createParser(r io.Reader) *parser {
 	reader := newCachedReader(bufio.NewReader(r))
 	p := &parser{
-		decoder:      xml.NewDecoder(reader),
-		doc:          &Node{Type: DocumentNode},
-		space2prefix: make(map[string]string),
-		level:        0,
-		reader:       reader,
+		decoder: xml.NewDecoder(reader),
+		doc:     &Node{Type: DocumentNode},
+		level:   0,
+		reader:  reader,
 	}
-	// http://www.w3.org/XML/1998/namespace is bound by definition to the prefix xml.
-	p.space2prefix["http://www.w3.org/XML/1998/namespace"] = "xml"
 	p.decoder.CharsetReader = charset.NewReaderLabel
 	p.prev = p.doc
 	return p
@@ -80,9 +76,12 @@ func createParser(r io.Reader) *parser {
 
 func (p *parser) parse() (*Node, error) {
 	var streamElementNodeCounter int
+	space2prefix := map[string]string{"http://www.w3.org/XML/1998/namespace": "xml"}
 
 	for {
+		p.reader.StartCaching()
 		tok, err := p.decoder.Token()
+		p.reader.StopCaching()
 		if err != nil {
 			return nil, err
 		}
@@ -104,27 +103,19 @@ func (p *parser) parse() (*Node, error) {
 				p.level = 1
 				p.prev = node
 			}
-			// https://www.w3.org/TR/xml-names/#scoping-defaulting
-			var defaultNamespaceURL string
-			// [#102], If found the duplicate NamespaceURL, we should saving into the loca
-			// and use it instead of p.space2prefix.
-			local_space2prefix := make(map[string]string)
+
 			for _, att := range tok.Attr {
 				if att.Name.Local == "xmlns" {
-					p.space2prefix[att.Value] = "" // reset empty if exist the default namespace
-					local_space2prefix[att.Value] = ""
-					defaultNamespaceURL = att.Value
+					space2prefix[att.Value] = "" // reset empty if exist the default namespace
+					//	defaultNamespaceURL = att.Value
 				} else if att.Name.Space == "xmlns" {
-					if _, ok := p.space2prefix[att.Value]; !ok {
-						p.space2prefix[att.Value] = att.Name.Local
-					} else if defaultNamespaceURL != att.Value {
-						local_space2prefix[att.Value] = att.Name.Local
-					}
+					// maybe there are have duplicate NamespaceURL?
+					space2prefix[att.Value] = att.Name.Local
 				}
 			}
 
 			if space := tok.Name.Space; space != "" {
-				if _, found := p.space2prefix[space]; !found && p.decoder.Strict {
+				if _, found := space2prefix[space]; !found && p.decoder.Strict {
 					return nil, fmt.Errorf("xmlquery: invalid XML document, namespace %s is missing", space)
 				}
 			}
@@ -132,7 +123,7 @@ func (p *parser) parse() (*Node, error) {
 			attributes := make([]Attr, len(tok.Attr))
 			for i, att := range tok.Attr {
 				name := att.Name
-				if prefix, ok := p.space2prefix[name.Space]; ok {
+				if prefix, ok := space2prefix[name.Space]; ok {
 					name.Space = prefix
 				}
 				attributes[i] = Attr{
@@ -160,18 +151,13 @@ func (p *parser) parse() (*Node, error) {
 				}
 				AddSibling(p.prev.Parent, node)
 			}
+
 			if node.NamespaceURI != "" {
-				var keepPrefix bool = true
-				if prefix, ok := local_space2prefix[node.NamespaceURI]; ok {
-					keepPrefix = true
-					node.Prefix = prefix
-				} else {
-					node.Prefix = p.space2prefix[node.NamespaceURI]
-				}
-				if defaultNamespaceURL != "" && node.NamespaceURI == defaultNamespaceURL {
-					node.Prefix = ""
-				} else if n := node.Parent; n != nil && !keepPrefix && node.NamespaceURI == n.NamespaceURI {
-					node.Prefix = n.Prefix
+				if v, ok := space2prefix[node.NamespaceURI]; ok {
+					cached := string(p.reader.Cache())
+					if strings.HasPrefix(cached, fmt.Sprintf("%s:%s", v, node.Data)) || strings.HasPrefix(cached, fmt.Sprintf("<%s:%s", v, node.Data)) {
+						node.Prefix = v
+					}
 				}
 			}
 			// If we're in the streaming mode, we need to remember the node if it is the target node
@@ -191,7 +177,6 @@ func (p *parser) parse() (*Node, error) {
 			}
 			p.prev = node
 			p.level++
-			p.reader.StartCaching()
 		case xml.EndElement:
 			p.level--
 			// If we're in streaming mode, and we already have a potential streaming
@@ -228,7 +213,6 @@ func (p *parser) parse() (*Node, error) {
 				}
 			}
 		case xml.CharData:
-			p.reader.StopCaching()
 			// First, normalize the cache...
 			cached := strings.ToUpper(string(p.reader.Cache()))
 			nodeType := TextNode
@@ -247,7 +231,6 @@ func (p *parser) parse() (*Node, error) {
 				}
 				AddSibling(p.prev.Parent, node)
 			}
-			p.reader.StartCaching()
 		case xml.Comment:
 			node := &Node{Type: CommentNode, Data: string(tok), level: p.level}
 			if p.level == p.prev.level {
