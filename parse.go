@@ -69,7 +69,9 @@ func createParser(r io.Reader) *parser {
 		level:   0,
 		reader:  reader,
 	}
-	p.decoder.CharsetReader = charset.NewReaderLabel
+	if p.decoder.CharsetReader == nil {
+		p.decoder.CharsetReader = charset.NewReaderLabel
+	}
 	p.prev = p.doc
 	return p
 }
