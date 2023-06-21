@@ -80,6 +80,13 @@ func WithoutComments() OutputOption {
 	}
 }
 
+// WithPreserveSpace will preserve spaces in output
+func WithPreserveSpace() OutputOption {
+	return func(oc *outputConfiguration) {
+		oc.preserveSpaces = true
+	}
+}
+
 func newXMLName(name string) xml.Name {
 	if i := strings.IndexByte(name, ':'); i > 0 {
 		return xml.Name{
@@ -216,8 +223,11 @@ func (n *Node) OutputXMLWithOptions(opts ...OutputOption) string {
 	for _, opt := range opts {
 		opt(config)
 	}
+	pastPreserveSpaces := config.preserveSpaces
+	// restore the default value, for compatibility
+	config.preserveSpaces = false
 
-	preserveSpaces := calculatePreserveSpaces(n, false)
+	preserveSpaces := calculatePreserveSpaces(n, pastPreserveSpaces)
 	var b strings.Builder
 	if config.printSelf && n.Type != DocumentNode {
 		outputXML(&b, n, preserveSpaces, config)

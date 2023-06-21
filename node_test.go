@@ -592,3 +592,22 @@ func TestOutputXMLWithOptions(t *testing.T) {
 		t.Errorf("output was not expected. expected %v but got %v", expected, result)
 	}
 }
+
+func TestOutputXMLWithPreserveSpaceOption(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?>
+	<class_list>
+		<student>
+			<name> Robert </name>
+			<grade>A+</grade>
+		</student>
+	</class_list>`
+	doc, _ := Parse(strings.NewReader(s))
+	resultWithSpace := doc.OutputXMLWithOptions(WithPreserveSpace())
+	resultWithoutSpace := doc.OutputXMLWithOptions()
+	if !strings.Contains(resultWithSpace, "> Robert <") {
+		t.Errorf("output was not expected. expected %v but got %v", " Robert ", resultWithSpace)
+	}
+	if !strings.Contains(resultWithoutSpace, ">Robert<") {
+		t.Errorf("output was not expected. expected %v but got %v", " Robert ", resultWithoutSpace)
+	}
+}
