@@ -224,9 +224,6 @@ func (n *Node) OutputXMLWithOptions(opts ...OutputOption) string {
 		opt(config)
 	}
 	pastPreserveSpaces := config.preserveSpaces
-	// restore the default value, for compatibility
-	config.preserveSpaces = false
-
 	preserveSpaces := calculatePreserveSpaces(n, pastPreserveSpaces)
 	var b strings.Builder
 	if config.printSelf && n.Type != DocumentNode {
