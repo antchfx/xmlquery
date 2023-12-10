@@ -562,3 +562,41 @@ func TestXMLPreservation(t *testing.T) {
 	testOutputXML(t, "first call result",
 		`<?xml version="1.0" encoding="UTF-8"?><AAA><CCC><![CDATA[c1]]></CCC></AAA>`, doc)
 }
+
+func TestStreamParser_DefaultNamespace(t *testing.T) {
+	s := `
+	<Objects xmlns="http://example.com/schema/2007/someschema">
+		<Object id="ObjectA">ObjectA</Object>
+		<Object id="ObjectB">ObjectB</Object>
+		<Object id="ObjectC">ObjectD</Object>
+	</Objects>`
+
+	sp, err := CreateStreamParser(strings.NewReader(s), "//Objects/*[namespace-uri()=\"http://example.com/schema/2007/someschema\" and local-name()=\"Object\"]")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	n, err := sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	var x = `<Object id="ObjectA">ObjectA</Object>`
+	testOutputXML(t, "first call result", x, n)
+
+	n, err = sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	x = `<Object id="ObjectB">ObjectB</Object>`
+	testOutputXML(t, "second call result", x, n)
+
+	n, err = sp.Read()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	x = `<Object id="ObjectC">ObjectD</Object>`
+	testOutputXML(t, "third call result", x, n)
+}

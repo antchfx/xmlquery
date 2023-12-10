@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/antchfx/xpath"
 	"golang.org/x/net/html/charset"
@@ -59,6 +60,8 @@ type parser struct {
 	streamNode          *Node         // Need to remember the last target node So we can clean it up upon next Read() call.
 	streamNodePrev      *Node         // Need to remember target node's prev so upon target node removal, we can restore correct prev.
 	reader              *cachedReader // Need to maintain a reference to the reader, so we can determine whether a node contains CDATA.
+	once                sync.Once
+	space2prefix        map[string]string
 }
 
 func createParser(r io.Reader) *parser {
@@ -77,9 +80,11 @@ func createParser(r io.Reader) *parser {
 }
 
 func (p *parser) parse() (*Node, error) {
-	var streamElementNodeCounter int
-	space2prefix := map[string]string{"http://www.w3.org/XML/1998/namespace": "xml"}
+	p.once.Do(func() {
+		p.space2prefix = map[string]string{"http://www.w3.org/XML/1998/namespace": "xml"}
+	})
 
+	var streamElementNodeCounter int
 	for {
 		p.reader.StartCaching()
 		tok, err := p.decoder.Token()
@@ -108,16 +113,16 @@ func (p *parser) parse() (*Node, error) {
 
 			for _, att := range tok.Attr {
 				if att.Name.Local == "xmlns" {
-					space2prefix[att.Value] = "" // reset empty if exist the default namespace
+					p.space2prefix[att.Value] = "" // reset empty if exist the default namespace
 					//	defaultNamespaceURL = att.Value
 				} else if att.Name.Space == "xmlns" {
 					// maybe there are have duplicate NamespaceURL?
-					space2prefix[att.Value] = att.Name.Local
+					p.space2prefix[att.Value] = att.Name.Local
 				}
 			}
 
 			if space := tok.Name.Space; space != "" {
-				if _, found := space2prefix[space]; !found && p.decoder.Strict {
+				if _, found := p.space2prefix[space]; !found && p.decoder.Strict {
 					return nil, fmt.Errorf("xmlquery: invalid XML document, namespace %s is missing", space)
 				}
 			}
@@ -125,7 +130,7 @@ func (p *parser) parse() (*Node, error) {
 			attributes := make([]Attr, len(tok.Attr))
 			for i, att := range tok.Attr {
 				name := att.Name
-				if prefix, ok := space2prefix[name.Space]; ok {
+				if prefix, ok := p.space2prefix[name.Space]; ok {
 					name.Space = prefix
 				}
 				attributes[i] = Attr{
@@ -155,7 +160,7 @@ func (p *parser) parse() (*Node, error) {
 			}
 
 			if node.NamespaceURI != "" {
-				if v, ok := space2prefix[node.NamespaceURI]; ok {
+				if v, ok := p.space2prefix[node.NamespaceURI]; ok {
 					cached := string(p.reader.Cache())
 					if strings.HasPrefix(cached, fmt.Sprintf("%s:%s", v, node.Data)) || strings.HasPrefix(cached, fmt.Sprintf("<%s:%s", v, node.Data)) {
 						node.Prefix = v
