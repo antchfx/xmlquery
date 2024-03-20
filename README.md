@@ -1,37 +1,33 @@
-xmlquery
-====
-[![Build Status](https://travis-ci.org/antchfx/xmlquery.svg?branch=master)](https://travis-ci.org/antchfx/xmlquery)
-[![Coverage Status](https://coveralls.io/repos/github/antchfx/xmlquery/badge.svg?branch=master)](https://coveralls.io/github/antchfx/xmlquery?branch=master)
+# xmlquery
+
+[![Build Status](https://github.com/antchfx/xmlquery/actions/workflows/testing.yml/badge.svg)](https://github.com/antchfx/xmlquery/actions/workflows/testing.yml)
 [![GoDoc](https://godoc.org/github.com/antchfx/xmlquery?status.svg)](https://godoc.org/github.com/antchfx/xmlquery)
 [![Go Report Card](https://goreportcard.com/badge/github.com/antchfx/xmlquery)](https://goreportcard.com/report/github.com/antchfx/xmlquery)
 
-Overview
-===
+# Overview
 
-`xmlquery` is an XPath query package for XML documents, allowing you to extract 
+`xmlquery` is an XPath query package for XML documents, allowing you to extract
 data or evaluate from XML documents with an XPath expression.
 
 `xmlquery` has a built-in query object caching feature that caches recently used
-XPATH query strings. Enabling caching can avoid recompile XPath expression for 
-each query. 
+XPATH query strings. Enabling caching can avoid recompile XPath expression for
+each query.
 
 You can visit this page to learn about the supported XPath(1.0/2.0) syntax. https://github.com/antchfx/xpath
 
-[htmlquery](https://github.com/antchfx/htmlquery)	- Package for the HTML document query.
+[htmlquery](https://github.com/antchfx/htmlquery) - Package for the HTML document query.
 
-[xmlquery](https://github.com/antchfx/xmlquery)	- Package for the XML document query.
+[xmlquery](https://github.com/antchfx/xmlquery) - Package for the XML document query.
 
-[jsonquery](https://github.com/antchfx/jsonquery)	- Package for the JSON document query.
+[jsonquery](https://github.com/antchfx/jsonquery) - Package for the JSON document query.
 
-Installation
-====
+# Installation
+
 ```
  $ go get github.com/antchfx/xmlquery
 ```
 
-
-Quick Starts
-===
+# Quick Starts
 
 ```go
 import (
@@ -75,8 +71,7 @@ func main(){
 }
 ```
 
-Getting Started
-===
+# Getting Started
 
 ### Find specified XPath query.
 
@@ -190,8 +185,7 @@ expr, err := xpath.Compile("count(//book)")
 price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
 ```
 
-Advanced Features
-====
+# Advanced Features
 
 ### Parse `UTF-16` XML file with `ParseWithOptions()`.
 
@@ -273,8 +267,7 @@ Output:
 <?xml version="1.0"?><rss><channel><title>W3Schools Home Page</title></channel></rss>
 ```
 
-FAQ
-====
+# FAQ
 
 #### `Find()` vs `QueryAll()`, which is better?
 
@@ -284,12 +277,12 @@ an error.
 
 #### Can I save my query expression object for the next query?
 
-Yes, you can. We provide `QuerySelector` and `QuerySelectorAll` methods; they 
+Yes, you can. We provide `QuerySelector` and `QuerySelectorAll` methods; they
 accept your query expression object.
 
-Caching a query expression object avoids recompiling the XPath query 
+Caching a query expression object avoids recompiling the XPath query
 expression, improving query performance.
 
-Questions
-===
+# Questions
+
 Please let me know if you have any questions
