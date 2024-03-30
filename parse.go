@@ -61,7 +61,12 @@ type parser struct {
 	streamNodePrev      *Node         // Need to remember target node's prev so upon target node removal, we can restore correct prev.
 	reader              *cachedReader // Need to maintain a reference to the reader, so we can determine whether a node contains CDATA.
 	once                sync.Once
-	space2prefix        map[string]string
+	space2prefix        map[string]*xmlnsPrefix
+}
+
+type xmlnsPrefix struct {
+	name  string
+	level int
 }
 
 func createParser(r io.Reader) *parser {
@@ -81,7 +86,7 @@ func createParser(r io.Reader) *parser {
 
 func (p *parser) parse() (*Node, error) {
 	p.once.Do(func() {
-		p.space2prefix = map[string]string{"http://www.w3.org/XML/1998/namespace": "xml"}
+		p.space2prefix = map[string]*xmlnsPrefix{"http://www.w3.org/XML/1998/namespace": {name: "xml", level: 0}}
 	})
 
 	var streamElementNodeCounter int
@@ -113,11 +118,13 @@ func (p *parser) parse() (*Node, error) {
 
 			for _, att := range tok.Attr {
 				if att.Name.Local == "xmlns" {
-					p.space2prefix[att.Value] = "" // reset empty if exist the default namespace
-					//	defaultNamespaceURL = att.Value
+					// https://github.com/antchfx/xmlquery/issues/67
+					if prefix, ok := p.space2prefix[att.Value]; !ok || (ok && prefix.level >= p.level) {
+						p.space2prefix[att.Value] = &xmlnsPrefix{name: "", level: p.level} // reset empty if exist the default namespace
+					}
 				} else if att.Name.Space == "xmlns" {
 					// maybe there are have duplicate NamespaceURL?
-					p.space2prefix[att.Value] = att.Name.Local
+					p.space2prefix[att.Value] = &xmlnsPrefix{name: att.Name.Local, level: p.level}
 				}
 			}
 
@@ -131,7 +138,7 @@ func (p *parser) parse() (*Node, error) {
 			for i, att := range tok.Attr {
 				name := att.Name
 				if prefix, ok := p.space2prefix[name.Space]; ok {
-					name.Space = prefix
+					name.Space = prefix.name
 				}
 				attributes[i] = Attr{
 					Name:         name,
@@ -162,8 +169,8 @@ func (p *parser) parse() (*Node, error) {
 			if node.NamespaceURI != "" {
 				if v, ok := p.space2prefix[node.NamespaceURI]; ok {
 					cached := string(p.reader.Cache())
-					if strings.HasPrefix(cached, fmt.Sprintf("%s:%s", v, node.Data)) || strings.HasPrefix(cached, fmt.Sprintf("<%s:%s", v, node.Data)) {
-						node.Prefix = v
+					if strings.HasPrefix(cached, fmt.Sprintf("%s:%s", v.name, node.Data)) || strings.HasPrefix(cached, fmt.Sprintf("<%s:%s", v.name, node.Data)) {
+						node.Prefix = v.name
 					}
 				}
 			}
@@ -290,37 +297,43 @@ type StreamParser struct {
 // scenarios.
 //
 // Scenario 1: simple case:
-//  xml := `<AAA><BBB>b1</BBB><BBB>b2</BBB></AAA>`
-//  sp, err := CreateStreamParser(strings.NewReader(xml), "/AAA/BBB")
-//  if err != nil {
-//      panic(err)
-//  }
-//  for {
-//      n, err := sp.Read()
-//      if err != nil {
-//          break
-//      }
-//      fmt.Println(n.OutputXML(true))
-//  }
+//
+//	xml := `<AAA><BBB>b1</BBB><BBB>b2</BBB></AAA>`
+//	sp, err := CreateStreamParser(strings.NewReader(xml), "/AAA/BBB")
+//	if err != nil {
+//	    panic(err)
+//	}
+//	for {
+//	    n, err := sp.Read()
+//	    if err != nil {
+//	        break
+//	    }
+//	    fmt.Println(n.OutputXML(true))
+//	}
+//
 // Output will be:
-//   <BBB>b1</BBB>
-//   <BBB>b2</BBB>
+//
+//	<BBB>b1</BBB>
+//	<BBB>b2</BBB>
 //
 // Scenario 2: advanced case:
-//  xml := `<AAA><BBB>b1</BBB><BBB>b2</BBB></AAA>`
-//  sp, err := CreateStreamParser(strings.NewReader(xml), "/AAA/BBB", "/AAA/BBB[. != 'b1']")
-//  if err != nil {
-//      panic(err)
-//  }
-//  for {
-//      n, err := sp.Read()
-//      if err != nil {
-//          break
-//      }
-//      fmt.Println(n.OutputXML(true))
-//  }
+//
+//	xml := `<AAA><BBB>b1</BBB><BBB>b2</BBB></AAA>`
+//	sp, err := CreateStreamParser(strings.NewReader(xml), "/AAA/BBB", "/AAA/BBB[. != 'b1']")
+//	if err != nil {
+//	    panic(err)
+//	}
+//	for {
+//	    n, err := sp.Read()
+//	    if err != nil {
+//	        break
+//	    }
+//	    fmt.Println(n.OutputXML(true))
+//	}
+//
 // Output will be:
-//   <BBB>b2</BBB>
+//
+//	<BBB>b2</BBB>
 //
 // As the argument names indicate, streamElementXPath should be used for
 // providing xpath query pointing to the target element node only, no extra

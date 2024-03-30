@@ -114,6 +114,29 @@ func TestDefaultNamespace_1(t *testing.T) {
 	}
 }
 
+func TestDefaultNamespace_3(t *testing.T) {
+	// https://github.com/antchfx/xmlquery/issues/67
+	// Use the duplicate xmlns on the children element
+	s := `<?xml version='1.0' encoding='UTF-8'?>
+	<bk:books xmlns:bk="urn:loc.gov:books">
+		<bk:book>
+			<title>book 2</title>
+		</bk:book>
+		<bk:book>
+			<title xmlns="urn:loc.gov:books">book 2</title>
+		</bk:book>
+	</bk:books>
+`
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := Find(doc, `/bk:books/bk:book`)
+	if found, expected := len(list), 2; found != expected {
+		t.Fatalf("should found %d bk:book but found %d", expected, found)
+	}
+}
+
 func TestDefaultNamespace_2(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 	<svg
