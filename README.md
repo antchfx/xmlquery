@@ -152,10 +152,17 @@ list := xmlquery.Find(doc, "//author")
 book := xmlquery.FindOne(doc, "//book[2]")
 ```
 
-#### Find all book elements and only get `id` attribute. (New Feature)
+#### Find the last book.
+
+```go
+book := xmlquery.FindOne(doc, "//book[last()]")
+```
+
+#### Find all book elements and only get `id` attribute. 
 
 ```go
 list := xmlquery.Find(doc,"//book/@id")
+fmt.Println(list[0].InnerText) // outout @id value
 ```
 
 #### Find all books with id `bk104`.
@@ -178,10 +185,17 @@ price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
 fmt.Printf("total price: %f\n", price)
 ```
 
-#### Evaluate number of all book elements.
+#### Count the number of books.
 
 ```go
 expr, err := xpath.Compile("count(//book)")
+count := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
+```
+
+#### Calculate the total price of all book prices.
+
+```go
+expr, err := xpath.Compile("sum(//book/price)")
 price := expr.Evaluate(xmlquery.CreateXPathNavigator(doc)).(float64)
 ```
 
