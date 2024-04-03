@@ -281,6 +281,17 @@ func (p *parser) parse() (*Node, error) {
 			}
 			p.prev = node
 		case xml.Directive:
+			node := &Node{Type: NotationNode, Data: string(tok), level: p.level}
+			if p.level == p.prev.level {
+				AddSibling(p.prev, node)
+			} else if p.level > p.prev.level {
+				AddChild(p.prev, node)
+			} else if p.level < p.prev.level {
+				for i := p.prev.level - p.level; i > 1; i-- {
+					p.prev = p.prev.Parent
+				}
+				AddSibling(p.prev.Parent, node)
+			}
 		}
 	}
 }

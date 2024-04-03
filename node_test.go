@@ -634,3 +634,11 @@ func TestNodeLevel(t *testing.T) {
 	}
 
 }
+
+func TestDirectiveNode(t *testing.T) {
+	expected := `<!DOCTYPE people_list SYSTEM "example.dtd">`
+	n := &Node{Data: `DOCTYPE people_list SYSTEM "example.dtd"`, Type: NotationNode}
+	if v := n.OutputXML(true); expected != v {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, v)
+	}
+}

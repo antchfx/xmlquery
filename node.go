@@ -27,6 +27,8 @@ const (
 	CommentNode
 	// AttributeNode is an attribute of element.
 	AttributeNode
+	// NotationNode is a directive represents in document (for example, <!text...>).
+	NotationNode
 )
 
 type Attr struct {
@@ -156,6 +158,9 @@ func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputC
 			b.WriteString(n.Data)
 			b.WriteString("-->")
 		}
+		return
+	case NotationNode:
+		fmt.Fprintf(b, "<!%s>", n.Data)
 		return
 	case DeclarationNode:
 		b.WriteString("<?" + n.Data)

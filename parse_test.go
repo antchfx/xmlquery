@@ -623,3 +623,36 @@ func TestStreamParser_DefaultNamespace(t *testing.T) {
 	x = `<Object id="ObjectC">ObjectD</Object>`
 	testOutputXML(t, "third call result", x, n)
 }
+
+func TestDirective(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE Workspace>
+	<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="FixtureManager">
+	  <Creator>
+		<Name>Q Light Controller Plus</Name>
+		<Version>4.12.3</Version>
+	  </Creator>
+	</Workspace>`
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	top := doc.FirstChild
+	n := top.NextSibling.NextSibling
+	if n == nil {
+		t.Error("should be not nil, but got nil")
+		return
+	}
+	if v := n.Type; v != NotationNode {
+		t.Errorf("expected the node type is NotationNode, but got %d", v)
+	}
+	if expected, val := `<!DOCTYPE Workspace>`, n.OutputXML(true); expected != val {
+		t.Errorf("expected %s but got %s", expected, val)
+	}
+
+	list := Find(doc, `//*`)
+	if m := len(list); m != 4 {
+		t.Errorf("expected count is 4 but got %d", m)
+	}
+}

@@ -156,7 +156,7 @@ func (x *NodeNavigator) NodeType() xpath.NodeType {
 	switch x.curr.Type {
 	case CommentNode:
 		return xpath.CommentNode
-	case TextNode, CharDataNode:
+	case TextNode, CharDataNode, NotationNode:
 		return xpath.TextNode
 	case DeclarationNode, DocumentNode:
 		return xpath.RootNode
