@@ -99,6 +99,10 @@ func newXMLName(name string) xml.Name {
 	}
 }
 
+func (n *Node) Level() int {
+	return n.level
+}
+
 // InnerText returns the text between the start and end tags of the object.
 func (n *Node) InnerText() string {
 	var output func(*strings.Builder, *Node)
