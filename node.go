@@ -42,11 +42,12 @@ type Attr struct {
 type Node struct {
 	Parent, FirstChild, LastChild, PrevSibling, NextSibling *Node
 
-	Type         NodeType
-	Data         string
-	Prefix       string
-	NamespaceURI string
-	Attr         []Attr
+	Type            NodeType
+	Data            string
+	Prefix          string
+	NamespaceURI    string
+	Attr            []Attr
+	SiblingSequence int
 
 	level int // node level in the tree
 }
