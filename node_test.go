@@ -612,6 +612,22 @@ func TestOutputXMLWithPreserveSpaceOption(t *testing.T) {
 	}
 }
 
+func TestOutputXMLWithIndentation(t *testing.T) {
+	s := `<?xml version="1.0" encoding="utf-8"?><xml><outerTag><tagWithValue>123</tagWithValue></outerTag></xml>`
+	expected := `<?xml version="1.0" encoding="utf-8"?>
+<xml>
+  <outerTag>
+    <tagWithValue>123</tagWithValue>
+  </outerTag>
+</xml>`
+
+	doc, _ := Parse(strings.NewReader(s))
+	resultWithIndent := doc.OutputXMLWithOptions(WithIndentation("  "))
+	if resultWithIndent != expected {
+		t.Errorf("output was not expected. expected %v but got %v", expected, resultWithIndent)
+	}
+}
+
 func TestNodeLevel(t *testing.T) {
 	s := `<?xml version="1.0" encoding="utf-8"?>
 	<class_list>

@@ -56,6 +56,7 @@ type outputConfiguration struct {
 	preserveSpaces         bool
 	emptyElementTagSupport bool
 	skipComments           bool
+	useIndentation         string
 }
 
 type OutputOption func(*outputConfiguration)
@@ -86,6 +87,13 @@ func WithoutComments() OutputOption {
 func WithPreserveSpace() OutputOption {
 	return func(oc *outputConfiguration) {
 		oc.preserveSpaces = true
+	}
+}
+
+// WithIndentation sets the indentation string used for formatting the output.
+func WithIndentation(indentation string) OutputOption {
+	return func(oc *outputConfiguration) {
+		oc.useIndentation = indentation
 	}
 }
 
@@ -141,7 +149,53 @@ func calculatePreserveSpaces(n *Node, pastValue bool) bool {
 	return pastValue
 }
 
-func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputConfiguration) {
+type indentation struct {
+	level    int
+	hasChild bool
+	indent   string
+	b        *strings.Builder
+}
+
+func newIndentation(indent string, b *strings.Builder) *indentation {
+	if indent == "" {
+		return nil
+	}
+	return &indentation{
+		indent: indent,
+		b:      b,
+	}
+}
+
+func (i *indentation) NewLine() {
+	if i == nil {
+		return
+	}
+	i.b.WriteString("\n")
+}
+
+func (i *indentation) Open() {
+	if i == nil {
+		return
+	}
+	i.b.WriteString("\n")
+	i.b.WriteString(strings.Repeat(i.indent, i.level))
+	i.level++
+	i.hasChild = false
+}
+
+func (i *indentation) Close() {
+	if i == nil {
+		return
+	}
+	i.level--
+	if i.hasChild {
+		i.b.WriteString("\n")
+		i.b.WriteString(strings.Repeat(i.indent, i.level))
+	}
+	i.hasChild = true
+}
+
+func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputConfiguration, indent *indentation) {
 	preserveSpaces = calculatePreserveSpaces(n, preserveSpaces)
 	switch n.Type {
 	case TextNode:
@@ -160,11 +214,13 @@ func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputC
 		}
 		return
 	case NotationNode:
+		indent.NewLine()
 		fmt.Fprintf(b, "<!%s>", n.Data)
 		return
 	case DeclarationNode:
 		b.WriteString("<?" + n.Data)
 	default:
+		indent.Open()
 		if n.Prefix == "" {
 			b.WriteString("<" + n.Data)
 		} else {
@@ -189,13 +245,15 @@ func outputXML(b *strings.Builder, n *Node, preserveSpaces bool, config *outputC
 			b.WriteString(">")
 		} else {
 			b.WriteString("/>")
+			indent.Close()
 			return
 		}
 	}
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		outputXML(b, child, preserveSpaces, config)
+		outputXML(b, child, preserveSpaces, config, indent)
 	}
 	if n.Type != DeclarationNode {
+		indent.Close()
 		if n.Prefix == "" {
 			fmt.Fprintf(b, "</%s>", n.Data)
 		} else {
@@ -214,10 +272,10 @@ func (n *Node) OutputXML(self bool) string {
 	preserveSpaces := calculatePreserveSpaces(n, false)
 	var b strings.Builder
 	if self && n.Type != DocumentNode {
-		outputXML(&b, n, preserveSpaces, config)
+		outputXML(&b, n, preserveSpaces, config, newIndentation(config.useIndentation, &b))
 	} else {
 		for n := n.FirstChild; n != nil; n = n.NextSibling {
-			outputXML(&b, n, preserveSpaces, config)
+			outputXML(&b, n, preserveSpaces, config, newIndentation(config.useIndentation, &b))
 		}
 	}
 
@@ -236,10 +294,10 @@ func (n *Node) OutputXMLWithOptions(opts ...OutputOption) string {
 	preserveSpaces := calculatePreserveSpaces(n, pastPreserveSpaces)
 	var b strings.Builder
 	if config.printSelf && n.Type != DocumentNode {
-		outputXML(&b, n, preserveSpaces, config)
+		outputXML(&b, n, preserveSpaces, config, newIndentation(config.useIndentation, &b))
 	} else {
 		for n := n.FirstChild; n != nil; n = n.NextSibling {
-			outputXML(&b, n, preserveSpaces, config)
+			outputXML(&b, n, preserveSpaces, config, newIndentation(config.useIndentation, &b))
 		}
 	}
 
