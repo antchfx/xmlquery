@@ -658,3 +658,13 @@ func TestDirectiveNode(t *testing.T) {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, v)
 	}
 }
+
+func TestOutputXMLWithSingleQuotes(t *testing.T) {
+	s := `<?xml version='1.0' encoding='utf-8'?><a><b c='d'></b></a>`
+	expected := `<?xml version="1.0" encoding="utf-8"?><a><b c="d"></b></a>`
+	doc, _ := Parse(strings.NewReader(s))
+	output := doc.OutputXML(false)
+	if expected != output {
+		t.Errorf(`expected "%s", obtained "%s"`, expected, output)
+	}
+}
