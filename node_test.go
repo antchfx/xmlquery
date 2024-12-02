@@ -343,8 +343,7 @@ func TestSelectElement(t *testing.T) {
 		t.Fatalf("n is nil")
 	}
 
-	var ns []*Node
-	ns = aaa.SelectElements("CCC")
+	ns := aaa.SelectElements("CCC")
 	if len(ns) != 2 {
 		t.Fatalf("len(ns)!=2")
 	}
@@ -359,6 +358,23 @@ func TestEscapeOutputValue(t *testing.T) {
 	}
 
 	escapedInnerText := root.OutputXML(true)
+	if !strings.Contains(escapedInnerText, "&lt;*&gt;") {
+		t.Fatal("Inner Text has not been escaped")
+	}
+
+}
+
+func TestEscapeValueWrite(t *testing.T) {
+	data := `<AAA>&lt;*&gt;</AAA>`
+
+	root, err := Parse(strings.NewReader(data))
+	if err != nil {
+		t.Error(err)
+	}
+
+	var b strings.Builder
+	root.Write(&b, true)
+	escapedInnerText := b.String()
 	if !strings.Contains(escapedInnerText, "&lt;*&gt;") {
 		t.Fatal("Inner Text has not been escaped")
 	}
@@ -391,6 +407,34 @@ func TestUnnecessaryEscapeOutputValue(t *testing.T) {
 
 }
 
+func TestUnnecessaryEscapeValueWrite(t *testing.T) {
+	data := `<?xml version="1.0" encoding="utf-8"?>
+	<class_list xml:space="preserve">
+		<student>
+			<name> Robert </name>
+			<grade>A+</grade>
+
+		</student>
+	</class_list>`
+
+	root, err := Parse(strings.NewReader(data))
+	if err != nil {
+		t.Error(err)
+	}
+
+	var b strings.Builder
+	root.Write(&b, true)
+	escapedInnerText := b.String()
+	if strings.Contains(escapedInnerText, "&#x9") {
+		t.Fatal("\\n has been escaped unnecessarily")
+	}
+
+	if strings.Contains(escapedInnerText, "&#xA") {
+		t.Fatal("\\t has been escaped unnecessarily")
+	}
+
+}
+
 func TestHtmlUnescapeStringOriginString(t *testing.T) {
 	// has escape html character and \t
 	data := `<?xml version="1.0" encoding="utf-8"?>
@@ -412,6 +456,29 @@ func TestHtmlUnescapeStringOriginString(t *testing.T) {
 
 }
 
+func TestHtmlUnescapeStringOriginStringWrite(t *testing.T) {
+	// has escape html character and \t
+	data := `<?xml version="1.0" encoding="utf-8"?>
+	<example xml:space="preserve"><word>&amp;#48;		</word></example>`
+
+	root, err := Parse(strings.NewReader(data))
+	if err != nil {
+		t.Error(err)
+	}
+
+	var b strings.Builder
+	root.Write(&b, false)
+	escapedInnerText := b.String()
+	unescapeString := html.UnescapeString(escapedInnerText)
+	if strings.Contains(unescapeString, "&amp;") {
+		t.Fatal("&amp; need unescape")
+	}
+	if !strings.Contains(escapedInnerText, "&amp;#48;\t\t") {
+		t.Fatal("Inner Text should keep plain text")
+	}
+
+}
+
 func TestOutputXMLWithNamespacePrefix(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body></S:Body></S:Envelope>`
 	doc, _ := Parse(strings.NewReader(s))
@@ -419,6 +486,17 @@ func TestOutputXMLWithNamespacePrefix(t *testing.T) {
 		t.Fatal("xml document missing some characters")
 	}
 }
+
+func TestWriteWithNamespacePrefix(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8"?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body></S:Body></S:Envelope>`
+	doc, _ := Parse(strings.NewReader(s))
+	var b strings.Builder
+	doc.Write(&b, false)
+	if s != b.String() {
+		t.Fatal("xml document missing some characters")
+	}
+}
+
 
 func TestQueryWithPrefix(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body test="1"><ns2:Fault xmlns:ns2="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope"><faultcode>ns2:Client</faultcode><faultstring>This is a client fault</faultstring></ns2:Fault></S:Body></S:Envelope>`
