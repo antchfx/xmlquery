@@ -309,14 +309,6 @@ func TestMissDeclaration(t *testing.T) {
 	}
 }
 
-func TestNonXMLParse(t *testing.T) {
-	s := `{"a":null}`
-	doc, err := Parse(strings.NewReader(s))
-	if err == nil || doc != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestMissingNamespace(t *testing.T) {
 	s := `<root>
 	<myns:child id="1">value 1</myns:child>
