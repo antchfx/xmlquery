@@ -39,15 +39,33 @@ func Parse(r io.Reader) (*Node, error) {
 func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 	p := createParser(r)
 	options.apply(p)
-	for {
-		_, err := p.parse()
-		if err == io.EOF {
-			return p.doc, nil
-		}
-		if err != nil {
-			return nil, err
-		}
+	var err error
+	for err == nil {
+		_, err = p.parse()
 	}
+
+	if err == io.EOF {
+		// additional check for validity
+		// according to: https://www.w3.org/TR/xml
+		// the document MUST contain at least ONE element
+		valid := false
+		for doc := p.doc; doc != nil; doc = doc.NextSibling {
+			for node := doc.FirstChild; node != nil; node = node.NextSibling {
+				if node.Type == ElementNode {
+					valid = true
+					break
+				}
+			}
+		}
+		if !valid {
+			return nil, fmt.Errorf("xmlquery: invalid XML document")
+		}
+		return p.doc, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("xmlquery: unknown error")
 }
 
 type parser struct {
@@ -233,7 +251,6 @@ func (p *parser) parse() (*Node, error) {
 			if strings.HasPrefix(cached, "<![CDATA[") || strings.HasPrefix(cached, "![CDATA[") {
 				nodeType = CharDataNode
 			}
-
 			node := &Node{Type: nodeType, Data: string(tok), level: p.level}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
