@@ -62,10 +62,8 @@ func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 		}
 		return p.doc, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	return nil, fmt.Errorf("xmlquery: unknown error")
+
+	return nil, err
 }
 
 type parser struct {
