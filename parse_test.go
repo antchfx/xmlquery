@@ -114,29 +114,6 @@ func TestDefaultNamespace_1(t *testing.T) {
 	}
 }
 
-func TestDefaultNamespace_3(t *testing.T) {
-	// https://github.com/antchfx/xmlquery/issues/67
-	// Use the duplicate xmlns on the children element
-	s := `<?xml version='1.0' encoding='UTF-8'?>
-	<bk:books xmlns:bk="urn:loc.gov:books">
-		<bk:book>
-			<title>book 2</title>
-		</bk:book>
-		<bk:book>
-			<title xmlns="urn:loc.gov:books">book 2</title>
-		</bk:book>
-	</bk:books>
-`
-	doc, err := Parse(strings.NewReader(s))
-	if err != nil {
-		t.Fatal(err)
-	}
-	list := Find(doc, `/bk:books/bk:book`)
-	if found, expected := len(list), 2; found != expected {
-		t.Fatalf("should found %d bk:book but found %d", expected, found)
-	}
-}
-
 func TestDefaultNamespace_2(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 	<svg
@@ -162,6 +139,29 @@ func TestDefaultNamespace_2(t *testing.T) {
 	}
 }
 
+func TestDefaultNamespace_3(t *testing.T) {
+	// https://github.com/antchfx/xmlquery/issues/67
+	// Use the duplicate xmlns on the children element
+	s := `<?xml version='1.0' encoding='UTF-8'?>
+	<bk:books xmlns:bk="urn:loc.gov:books">
+		<bk:book>
+			<title>book 2</title>
+		</bk:book>
+		<bk:book>
+			<title xmlns="urn:loc.gov:books">book 2</title>
+		</bk:book>
+	</bk:books>
+`
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := Find(doc, `/bk:books/bk:book`)
+	if found, expected := len(list), 2; found != expected {
+		t.Fatalf("should found %d bk:book but found %d", expected, found)
+	}
+}
+
 func TestDuplicateNamespaceURL(t *testing.T) {
 	s := `<?xml version='1.0' encoding='UTF-8'?>
 	<S:Envelope
@@ -184,6 +184,7 @@ func TestDuplicateNamespaceURL(t *testing.T) {
 		t.Fatalf("should fount one but nil")
 	}
 }
+
 func TestNamespaceURL(t *testing.T) {
 	s := `
 <?xml version="1.0"?>
@@ -290,7 +291,7 @@ func TestParse(t *testing.T) {
 	testAttr(t, findNode(books[1], "title"), "lang", "en")
 	testValue(t, findNode(books[1], "price").InnerText(), "39.95")
 
-	testValue(t, books[0].OutputXML(true), `<book><title lang="en">Harry Potter</title><price>29.99</price></book>`)
+	testValue(t, books[0].OutputXMLWithOptions(WithOutputSelf(), WithoutPreserveSpace()), `<book><title lang="en">Harry Potter</title><price>29.99</price></book>`)
 }
 
 func TestMissDeclaration(t *testing.T) {
@@ -305,6 +306,14 @@ func TestMissDeclaration(t *testing.T) {
 	node := FindOne(doc, "//AAA")
 	if node == nil {
 		t.Fatal("//AAA is nil")
+	}
+}
+
+func TestNonXMLParse(t *testing.T) {
+	s := `{"a":null}`
+	doc, err := Parse(strings.NewReader(s))
+	if err == nil || doc != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -431,7 +440,7 @@ func TestStreamParser_InvalidXPath(t *testing.T) {
 }
 
 func testOutputXML(t *testing.T, msg string, expectedXML string, n *Node) {
-	if n.OutputXML(true) != expectedXML {
+	if n.OutputXMLWithOptions(WithOutputSelf(), WithoutPreserveSpace()) != expectedXML {
 		t.Fatalf("%s, expected XML: '%s', actual: '%s'", msg, expectedXML, n.OutputXML(true))
 	}
 }

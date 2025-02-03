@@ -92,6 +92,13 @@ func WithPreserveSpace() OutputOption {
 	}
 }
 
+// WithoutPreserveSpace will not preserve spaces in output
+func WithoutPreserveSpace() OutputOption {
+	return func(oc *outputConfiguration) {
+		oc.preserveSpaces = false
+	}
+}
+
 // WithIndentation sets the indentation string used for formatting the output.
 func WithIndentation(indentation string) OutputOption {
 	return func(oc *outputConfiguration) {
@@ -328,7 +335,9 @@ func (n *Node) Write(writer io.Writer, self bool) error {
 
 // WriteWithOptions writes xml with given options to given writer.
 func (n *Node) WriteWithOptions(writer io.Writer, opts ...OutputOption) (err error) {
-	config := &outputConfiguration{}
+	config := &outputConfiguration{
+		preserveSpaces: true,
+	}
 	// Set the options
 	for _, opt := range opts {
 		opt(config)
@@ -400,11 +409,7 @@ func AddChild(parent, n *Node) {
 	parent.LastChild = n
 }
 
-// AddSibling adds a new node 'n' as a sibling of a given node 'sibling'.
-// Note it is not necessarily true that the new node 'n' would be added
-// immediately after 'sibling'. If 'sibling' isn't the last child of its
-// parent, then the new node 'n' will be added at the end of the sibling
-// chain of their parent.
+// AddSibling adds a new node 'n' as a last node of sibling chain for a given node 'sibling'.
 func AddSibling(sibling, n *Node) {
 	for t := sibling.NextSibling; t != nil; t = t.NextSibling {
 		sibling = t
@@ -414,6 +419,19 @@ func AddSibling(sibling, n *Node) {
 	n.PrevSibling = sibling
 	n.NextSibling = nil
 	if sibling.Parent != nil {
+		sibling.Parent.LastChild = n
+	}
+}
+
+// AddImmediateSibling adds a new node 'n' as immediate sibling a given node 'sibling'.
+func AddImmediateSibling(sibling, n *Node) {
+	n.Parent = sibling.Parent
+	n.NextSibling = sibling.NextSibling
+	sibling.NextSibling = n
+	n.PrevSibling = sibling
+	if n.NextSibling != nil {
+		n.NextSibling.PrevSibling = n
+	} else if n.Parent != nil {
 		sibling.Parent.LastChild = n
 	}
 }
@@ -444,4 +462,16 @@ func RemoveFromTree(n *Node) {
 	n.Parent = nil
 	n.PrevSibling = nil
 	n.NextSibling = nil
+}
+
+// GetRoot returns a root of the tree where 'n' is a node.
+func GetRoot(n *Node) *Node {
+	if n == nil {
+		return nil
+	}
+	root := n
+	for root.Parent != nil {
+		root = root.Parent
+	}
+	return root
 }

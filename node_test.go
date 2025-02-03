@@ -250,7 +250,7 @@ func TestRemoveFromTree(t *testing.T) {
 		testTrue(t, n != nil)
 		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
-		testValue(t, doc.OutputXML(false),
+		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd></ddd><ggg></ggg></aaa>`)
 	})
 
@@ -260,7 +260,7 @@ func TestRemoveFromTree(t *testing.T) {
 		testTrue(t, n != nil)
 		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
-		testValue(t, doc.OutputXML(false),
+		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
 			`<?procinst?><!--comment--><aaa><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
 	})
 
@@ -270,7 +270,7 @@ func TestRemoveFromTree(t *testing.T) {
 		testTrue(t, n != nil)
 		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
-		testValue(t, doc.OutputXML(false),
+		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ggg></ggg></aaa>`)
 	})
 
@@ -280,7 +280,7 @@ func TestRemoveFromTree(t *testing.T) {
 		testTrue(t, n != nil)
 		RemoveFromTree(n)
 		verifyNodePointers(t, doc)
-		testValue(t, doc.OutputXML(false),
+		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd></aaa>`)
 	})
 
@@ -290,7 +290,7 @@ func TestRemoveFromTree(t *testing.T) {
 		testValue(t, procInst.Type, DeclarationNode)
 		RemoveFromTree(procInst)
 		verifyNodePointers(t, doc)
-		testValue(t, doc.OutputXML(false),
+		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
 			`<!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
 	})
 
@@ -300,7 +300,7 @@ func TestRemoveFromTree(t *testing.T) {
 		testValue(t, commentNode.Type, CommentNode)
 		RemoveFromTree(commentNode)
 		verifyNodePointers(t, doc)
-		testValue(t, doc.OutputXML(false),
+		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
 			`<?procinst?><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
 	})
 
@@ -308,9 +308,34 @@ func TestRemoveFromTree(t *testing.T) {
 		doc := parseXML()
 		RemoveFromTree(doc)
 		verifyNodePointers(t, doc)
-		testValue(t, doc.OutputXML(false),
+		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
 			`<?procinst?><!--comment--><aaa><bbb></bbb><ddd><eee><fff></fff></eee></ddd><ggg></ggg></aaa>`)
 	})
+}
+
+func TestAddImmediateSibling(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8"?>
+    <AAA>
+        <BBB id="1"/>
+        <CCC id="2">
+            <DDD/>
+        </CCC>
+		<CCC id="3">
+            <DDD/>
+        </CCC>
+     </AAA>`
+	root, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Error(err)
+	}
+
+	aaa := findNode(root, "AAA")
+	n := aaa.SelectElement("BBB")
+	if n == nil {
+		t.Fatalf("n is nil")
+	}
+	AddImmediateSibling(n, &Node{Type: ElementNode, Data: "r"})
+	testValue(t, root.OutputXMLWithOptions(WithoutPreserveSpace()), `<?xml version="1.0" encoding="UTF-8"?><AAA><BBB id="1"></BBB><r></r><CCC id="2"><DDD></DDD></CCC><CCC id="3"><DDD></DDD></CCC></AAA>`)
 }
 
 func TestSelectElement(t *testing.T) {
@@ -497,7 +522,6 @@ func TestWriteWithNamespacePrefix(t *testing.T) {
 	}
 }
 
-
 func TestQueryWithPrefix(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body test="1"><ns2:Fault xmlns:ns2="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope"><faultcode>ns2:Client</faultcode><faultstring>This is a client fault</faultstring></ns2:Fault></S:Body></S:Envelope>`
 	doc, _ := Parse(strings.NewReader(s))
@@ -582,7 +606,7 @@ func TestOutputXMLWithSpaceDirect(t *testing.T) {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
-	output := html.UnescapeString(doc.OutputXML(true))
+	output := html.UnescapeString(doc.OutputXMLWithOptions(WithOutputSelf(), WithoutPreserveSpace()))
 	if strings.Contains(output, "\n") {
 		t.Errorf("the outputted xml contains newlines")
 	}
@@ -606,7 +630,7 @@ func TestOutputXMLWithSpaceOverwrittenToPreserve(t *testing.T) {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, g)
 	}
 
-	output := html.UnescapeString(doc.OutputXML(true))
+	output := html.UnescapeString(doc.OutputXMLWithOptions(WithOutputSelf(), WithoutPreserveSpace()))
 	if strings.Contains(output, "\n") {
 		t.Errorf("the outputted xml contains newlines")
 	}
@@ -680,8 +704,8 @@ func TestOutputXMLWithPreserveSpaceOption(t *testing.T) {
 		</student>
 	</class_list>`
 	doc, _ := Parse(strings.NewReader(s))
-	resultWithSpace := doc.OutputXMLWithOptions(WithPreserveSpace())
-	resultWithoutSpace := doc.OutputXMLWithOptions()
+	resultWithSpace := doc.OutputXMLWithOptions()
+	resultWithoutSpace := doc.OutputXMLWithOptions(WithoutPreserveSpace())
 	if !strings.Contains(resultWithSpace, "> Robert <") {
 		t.Errorf("output was not expected. expected %v but got %v", " Robert ", resultWithSpace)
 	}

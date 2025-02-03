@@ -39,4 +39,19 @@ func TestCaching(t *testing.T) {
 	if !bytes.Equal(cached, []byte("BCDEF")) {
 		t.Fatalf("Incorrect cached buffer value")
 	}
+
+	cached = cachedReader.CacheWithLimit(-1)
+	if cached != nil {
+		t.Fatalf("Incorrect cached buffer value")
+	}
+
+	cached = cachedReader.CacheWithLimit(3)
+	if !bytes.Equal(cached, []byte("BCD")) {
+		t.Fatalf("Incorrect cached buffer value")
+	}
+
+	cached = cachedReader.CacheWithLimit(1000)
+	if !bytes.Equal(cached, []byte("BCDEF")) {
+		t.Fatalf("Incorrect cached buffer value")
+	}
 }
