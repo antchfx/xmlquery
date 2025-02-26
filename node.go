@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// A NodeType is the type of a Node.
+// A NodeType is the type of Node.
 type NodeType uint
 
 const (
@@ -321,7 +321,7 @@ func (n *Node) OutputXML(self bool) string {
 // OutputXMLWithOptions returns the text that including tags name.
 func (n *Node) OutputXMLWithOptions(opts ...OutputOption) string {
 	var b strings.Builder
-	n.WriteWithOptions(&b, opts...)
+	_ = n.WriteWithOptions(&b, opts...)
 	return b.String()
 }
 
@@ -345,7 +345,12 @@ func (n *Node) WriteWithOptions(writer io.Writer, opts ...OutputOption) (err err
 	pastPreserveSpaces := config.preserveSpaces
 	preserveSpaces := calculatePreserveSpaces(n, pastPreserveSpaces)
 	b := bufio.NewWriter(writer)
-	defer b.Flush()
+	defer func(b *bufio.Writer) {
+		err = b.Flush()
+		if err != nil {
+			// Handle the error?
+		}
+	}(b)
 
 	ident := newIndentation(config.useIndentation, b)
 	if config.printSelf && n.Type != DocumentNode {
@@ -362,36 +367,53 @@ func (n *Node) WriteWithOptions(writer io.Writer, opts ...OutputOption) (err err
 }
 
 // AddAttr adds a new attribute specified by 'key' and 'val' to a node 'n'.
-func AddAttr(n *Node, key, val string) {
+// Returns false if the attribute already exists.
+func AddAttr(n *Node, key, val string) bool {
+	if n.HasAttr(key) {
+		return false
+	}
 	attr := Attr{
 		Name:  newXMLName(key),
 		Value: val,
 	}
 	n.Attr = append(n.Attr, attr)
+	return true
+}
+
+// HasAttr determines if an attribute exists.
+func (n *Node) HasAttr(key string) bool {
+	name := newXMLName(key)
+	for _, attr := range n.Attr {
+		if attr.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // SetAttr allows an attribute value with the specified name to be changed.
 // If the attribute did not previously exist, it will be created.
-func (n *Node) SetAttr(key, value string) {
+func (n *Node) SetAttr(key, value string) bool {
 	name := newXMLName(key)
 	for i, attr := range n.Attr {
 		if attr.Name == name {
 			n.Attr[i].Value = value
-			return
+			return true
 		}
 	}
-	AddAttr(n, key, value)
+	return AddAttr(n, key, value)
 }
 
 // RemoveAttr removes the attribute with the specified name.
-func (n *Node) RemoveAttr(key string) {
+func (n *Node) RemoveAttr(key string) bool {
 	name := newXMLName(key)
 	for i, attr := range n.Attr {
 		if attr.Name == name {
 			n.Attr = append(n.Attr[:i], n.Attr[i+1:]...)
-			return
+			return true
 		}
 	}
+	return false
 }
 
 // AddChild adds a new node 'n' to a node 'parent' as its last child.
