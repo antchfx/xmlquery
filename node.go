@@ -142,6 +142,42 @@ func (n *Node) InnerText() string {
 	return b.String()
 }
 
+// IsElementLike returns true if the node type supports child nodes.
+func (n *Node) IsElementLike() bool {
+	switch n.Type {
+	case ElementNode, DocumentNode, DeclarationNode:
+		return true
+	default:
+		return false
+	}
+}
+
+// Children returns a slice of all direct child nodes of the current node.
+// This includes all node types that are children, without filtering.
+func (n *Node) Children() []*Node {
+	var children []*Node
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		children = append(children, child)
+	}
+	return children
+}
+
+// ChildNodes returns a slice of all direct child nodes of the current node (excluding attributes, text, comments, and char data).
+// Returns an error if the node type does not support child nodes.
+func (n *Node) ChildNodes() ([]*Node, error) {
+	if !n.IsElementLike() {
+		return nil, fmt.Errorf("node type %v does not support child nodes", n.Type)
+	}
+
+	var children []*Node
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		if child.IsElementLike() {
+			children = append(children, child)
+		}
+	}
+	return children, nil
+}
+
 func (n *Node) sanitizedData(preserveSpaces bool) string {
 	if preserveSpaces {
 		return n.Data

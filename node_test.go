@@ -117,6 +117,44 @@ func verifyNodePointers(t *testing.T, n *Node) {
 	testTrue(t, parent == nil || parent.LastChild == cur)
 }
 
+func TestChildren(t *testing.T) {
+	t.Run("Has 3 children", func(t *testing.T) {
+		node := &Node{Type: ElementNode}
+
+		AddChild(node, &Node{Type: CommentNode})
+		AddChild(node, &Node{Type: ElementNode})
+		AddChild(node, &Node{Type: TextNode})
+
+		children := node.Children()
+
+		testTrue(t, len(children) == 3)
+	})
+}
+
+func TestChildNodes(t *testing.T) {
+	t.Run("Has 1 child node", func(t *testing.T) {
+		node := &Node{Type: ElementNode}
+
+		AddChild(node, &Node{Type: CommentNode})
+		AddChild(node, &Node{Type: ElementNode})
+		AddChild(node, &Node{Type: TextNode})
+
+		children, err := node.ChildNodes()
+
+		testTrue(t, err == nil)
+		testTrue(t, len(children) == 1)
+	})
+
+	t.Run("Cannot have child nodes", func(t *testing.T) {
+		node := &Node{Type: CommentNode}
+
+		children, err := node.ChildNodes()
+
+		testTrue(t, children == nil)
+		testTrue(t, err != nil)
+	})
+}
+
 func TestAddAttr(t *testing.T) {
 	for _, test := range []struct {
 		name     string
@@ -228,6 +266,59 @@ func TestRemoveAttr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			test.n.RemoveAttr(test.key)
 			testValue(t, test.n.OutputXML(true), test.expected)
+		})
+	}
+}
+
+func TestIsElementLike(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		n        *Node
+		expected bool
+	}{
+		{
+			name:     "DocumentNode can have children",
+			n:        &Node{Type: DocumentNode},
+			expected: true,
+		},
+		{
+			name:     "DeclarationNode can have children",
+			n:        &Node{Type: DeclarationNode},
+			expected: true,
+		},
+		{
+			name:     "ElementNode can have children",
+			n:        &Node{Type: ElementNode},
+			expected: true,
+		},
+		{
+			name:     "TextNode cannot have children",
+			n:        &Node{Type: TextNode},
+			expected: false,
+		},
+		{
+			name:     "CharDataNode cannot have children",
+			n:        &Node{Type: CharDataNode},
+			expected: false,
+		},
+		{
+			name:     "CommentNode cannot have children",
+			n:        &Node{Type: CommentNode},
+			expected: false,
+		},
+		{
+			name:     "AttributeNode cannot have children",
+			n:        &Node{Type: AttributeNode},
+			expected: false,
+		},
+		{
+			name:     "NotationNode cannot have children",
+			n:        &Node{Type: NotationNode},
+			expected: false,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			testValue(t, test.n.IsElementLike(), test.expected)
 		})
 	}
 }
