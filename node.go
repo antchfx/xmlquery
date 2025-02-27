@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// A NodeType is the type of Node.
+// A NodeType is the type of a Node.
 type NodeType uint
 
 const (
@@ -345,12 +345,7 @@ func (n *Node) WriteWithOptions(writer io.Writer, opts ...OutputOption) (err err
 	pastPreserveSpaces := config.preserveSpaces
 	preserveSpaces := calculatePreserveSpaces(n, pastPreserveSpaces)
 	b := bufio.NewWriter(writer)
-	defer func(b *bufio.Writer) {
-		err = b.Flush()
-		if err != nil {
-			// Handle the error?
-		}
-	}(b)
+	defer b.Flush()
 
 	ident := newIndentation(config.useIndentation, b)
 	if config.printSelf && n.Type != DocumentNode {
