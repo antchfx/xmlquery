@@ -124,6 +124,7 @@ func TestAddAttr(t *testing.T) {
 		key      string
 		val      string
 		expected string
+		ok       bool
 	}{
 		{
 			name:     "node has no existing attr",
@@ -131,6 +132,7 @@ func TestAddAttr(t *testing.T) {
 			key:      "ns:k1",
 			val:      "v1",
 			expected: `< ns:k1="v1"></>`,
+			ok:       true,
 		},
 		{
 			name:     "node has existing attrs",
@@ -138,10 +140,20 @@ func TestAddAttr(t *testing.T) {
 			key:      "k2",
 			val:      "v2",
 			expected: `< k1="v1" k2="v2"></>`,
+			ok:       true,
+		},
+		{
+			name:     "node already has existing attr",
+			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Local: "k1"}, Value: "v1"}}},
+			key:      "k1",
+			val:      "v1",
+			expected: `< k1="v1"></>`,
+			ok:       false,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			AddAttr(test.n, test.key, test.val)
+			ok := AddAttr(test.n, test.key, test.val)
+			testTrue(t, ok == test.ok)
 			testValue(t, test.n.OutputXML(true), test.expected)
 		})
 	}
@@ -154,6 +166,7 @@ func TestSetAttr(t *testing.T) {
 		key      string
 		val      string
 		expected string
+		ok       bool
 	}{
 		{
 			name:     "node has no existing attr",
@@ -161,6 +174,7 @@ func TestSetAttr(t *testing.T) {
 			key:      "ns:k1",
 			val:      "v1",
 			expected: `< ns:k1="v1"></>`,
+			ok:       true,
 		},
 		{
 			name:     "node has an existing attr, overwriting",
@@ -168,6 +182,7 @@ func TestSetAttr(t *testing.T) {
 			key:      "ns:k1",
 			val:      "v2",
 			expected: `< ns:k1="v2"></>`,
+			ok:       true,
 		},
 		{
 			name:     "node has no existing attr, no ns",
@@ -175,6 +190,7 @@ func TestSetAttr(t *testing.T) {
 			key:      "k1",
 			val:      "v1",
 			expected: `< k1="v1"></>`,
+			ok:       true,
 		},
 		{
 			name:     "node has an existing attr, no ns, overwriting",
@@ -182,11 +198,13 @@ func TestSetAttr(t *testing.T) {
 			key:      "k1",
 			val:      "v2",
 			expected: `< k1="v2"></>`,
+			ok:       true,
 		},
 	} {
 
 		t.Run(test.name, func(t *testing.T) {
-			test.n.SetAttr(test.key, test.val)
+			ok := test.n.SetAttr(test.key, test.val)
+			testTrue(t, ok == test.ok)
 			testValue(t, test.n.OutputXML(true), test.expected)
 		})
 	}
@@ -198,48 +216,54 @@ func TestRemoveAttr(t *testing.T) {
 		n        *Node
 		key      string
 		expected string
+		ok       bool
 	}{
 		{
 			name:     "node has no existing attr",
 			n:        &Node{Type: AttributeNode},
 			key:      "ns:k1",
 			expected: `<></>`,
+			ok:       false,
 		},
 		{
 			name:     "node has an existing attr, overwriting",
 			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Space: "ns", Local: "k1"}, Value: "v1"}}},
 			key:      "ns:k1",
 			expected: `<></>`,
+			ok:       true,
 		},
 		{
 			name:     "node has no existing attr, no ns",
 			n:        &Node{Type: AttributeNode},
 			key:      "k1",
 			expected: `<></>`,
+			ok:       false,
 		},
 		{
 			name:     "node has an existing attr, no ns, overwriting",
 			n:        &Node{Type: AttributeNode, Attr: []Attr{{Name: xml.Name{Local: "k1"}, Value: "v1"}}},
 			key:      "k1",
 			expected: `<></>`,
+			ok:       true,
 		},
 	} {
 
 		t.Run(test.name, func(t *testing.T) {
-			test.n.RemoveAttr(test.key)
+			ok := test.n.RemoveAttr(test.key)
+			testTrue(t, ok == test.ok)
 			testValue(t, test.n.OutputXML(true), test.expected)
 		})
 	}
 }
 
 func TestRemoveFromTree(t *testing.T) {
-	xml := `<?procinst?>
+	xmlStr := `<?procinst?>
 		<!--comment-->
 		<aaa><bbb/>
 			<ddd><eee><fff/></eee></ddd>
 		<ggg/></aaa>`
 	parseXML := func() *Node {
-		doc, err := Parse(strings.NewReader(xml))
+		doc, err := Parse(strings.NewReader(xmlStr))
 		testTrue(t, err == nil)
 		return doc
 	}
@@ -398,7 +422,8 @@ func TestEscapeValueWrite(t *testing.T) {
 	}
 
 	var b strings.Builder
-	root.Write(&b, true)
+	err = root.Write(&b, true)
+	testTrue(t, err == nil)
 	escapedInnerText := b.String()
 	if !strings.Contains(escapedInnerText, "&lt;*&gt;") {
 		t.Fatal("Inner Text has not been escaped")
@@ -448,7 +473,8 @@ func TestUnnecessaryEscapeValueWrite(t *testing.T) {
 	}
 
 	var b strings.Builder
-	root.Write(&b, true)
+	err = root.Write(&b, true)
+	testTrue(t, err == nil)
 	escapedInnerText := b.String()
 	if strings.Contains(escapedInnerText, "&#x9") {
 		t.Fatal("\\n has been escaped unnecessarily")
@@ -492,7 +518,8 @@ func TestHtmlUnescapeStringOriginStringWrite(t *testing.T) {
 	}
 
 	var b strings.Builder
-	root.Write(&b, false)
+	err = root.Write(&b, false)
+	testTrue(t, err == nil)
 	escapedInnerText := b.String()
 	unescapeString := html.UnescapeString(escapedInnerText)
 	if strings.Contains(unescapeString, "&amp;") {
@@ -516,7 +543,8 @@ func TestWriteWithNamespacePrefix(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body></S:Body></S:Envelope>`
 	doc, _ := Parse(strings.NewReader(s))
 	var b strings.Builder
-	doc.Write(&b, false)
+	err := doc.Write(&b, false)
+	testTrue(t, err == nil)
 	if s != b.String() {
 		t.Fatal("xml document missing some characters")
 	}
