@@ -117,6 +117,20 @@ func verifyNodePointers(t *testing.T, n *Node) {
 	testTrue(t, parent == nil || parent.LastChild == cur)
 }
 
+func TestChildNodes(t *testing.T) {
+	t.Run("Has 3 children", func(t *testing.T) {
+		node := &Node{Type: ElementNode}
+
+		AddChild(node, &Node{Type: CommentNode})
+		AddChild(node, &Node{Type: ElementNode})
+		AddChild(node, &Node{Type: TextNode})
+
+		children := node.ChildNodes()
+
+		testTrue(t, len(children) == 3)
+	})
+}
+
 func TestAddAttr(t *testing.T) {
 	for _, test := range []struct {
 		name     string

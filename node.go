@@ -142,6 +142,16 @@ func (n *Node) InnerText() string {
 	return b.String()
 }
 
+// ChildNodes returns all the child nodes of the current node,
+// including text, comments, and char data.
+func (n *Node) ChildNodes() []*Node {
+	var list []*Node
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		list = append(list, child)
+	}
+	return list
+}
+
 func (n *Node) sanitizedData(preserveSpaces bool) string {
 	if preserveSpaces {
 		return n.Data
