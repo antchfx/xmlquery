@@ -85,22 +85,30 @@ func FindOne(top *Node, expr string) *Node {
 
 // QueryAll searches the XML Node that matches by the specified XPath expr.
 // Returns an error if the expression `expr` cannot be parsed.
-func QueryAll(top *Node, expr string) ([]*Node, error) {
-	exp, err := getQuery(expr)
+func QueryAllWithOptions(top *Node, expr string, opts xpath.CompileOptions) ([]*Node, error) {
+	exp, err := getQuery(expr, opts)
 	if err != nil {
 		return nil, err
 	}
 	return QuerySelectorAll(top, exp), nil
 }
 
+func QueryAll(top *Node, expr string) ([]*Node, error) {
+	return QueryAllWithOptions(top, expr, xpath.CompileOptions{})
+}
+
 // Query searches the XML Node that matches by the specified XPath expr,
 // and returns first matched element.
-func Query(top *Node, expr string) (*Node, error) {
-	exp, err := getQuery(expr)
+func QueryWithOptions(top *Node, expr string, opts xpath.CompileOptions) (*Node, error) {
+	exp, err := getQuery(expr, opts)
 	if err != nil {
 		return nil, err
 	}
 	return QuerySelector(top, exp), nil
+}
+
+func Query(top *Node, expr string) (*Node, error) {
+	return QueryWithOptions(top, expr, xpath.CompileOptions{})
 }
 
 // QuerySelectorAll searches all of the XML Node that matches the specified

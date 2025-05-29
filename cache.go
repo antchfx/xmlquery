@@ -1,11 +1,11 @@
 package xmlquery
 
 import (
+	"fmt"
 	"sync"
 
-	"github.com/golang/groupcache/lru"
-
 	"github.com/antchfx/xpath"
+	"github.com/golang/groupcache/lru"
 )
 
 // DisableSelectorCache will disable caching for the query selector if value is true.
@@ -21,23 +21,23 @@ var (
 	cacheMutex sync.Mutex
 )
 
-func getQuery(expr string) (*xpath.Expr, error) {
+func getQuery(expr string, opts xpath.CompileOptions) (*xpath.Expr, error) {
+	key := expr + fmt.Sprintf("%#v", opts)
 	if DisableSelectorCache || SelectorCacheMaxEntries <= 0 {
-		return xpath.Compile(expr)
+		return xpath.CompileWithOptions(expr, opts)
 	}
 	cacheOnce.Do(func() {
 		cache = lru.New(SelectorCacheMaxEntries)
 	})
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
-	if v, ok := cache.Get(expr); ok {
+	if v, ok := cache.Get(key); ok {
 		return v.(*xpath.Expr), nil
 	}
-	v, err := xpath.Compile(expr)
+	v, err := xpath.CompileWithOptions(expr, opts)
 	if err != nil {
 		return nil, err
 	}
-	cache.Add(expr, v)
+	cache.Add(key, v)
 	return v, nil
-
 }

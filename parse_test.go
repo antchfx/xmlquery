@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/antchfx/xpath"
 )
 
 func TestLoadURLSuccess(t *testing.T) {
@@ -331,25 +333,25 @@ func TestMissingNamespace(t *testing.T) {
 func TestTooNested(t *testing.T) {
 	s := `<?xml version="1.0" encoding="UTF-8"?>
 	<!-- comment here-->
-    <AAA>
-        <BBB>
-            <DDD>
-                <CCC>
-                    <DDD/>
-                    <EEE/>
-                </CCC>
-            </DDD>
-        </BBB>
-        <CCC>
-            <DDD>
-                <EEE>
-                    <DDD>
-                        <FFF/>
-                    </DDD>
-                </EEE>
-            </DDD>
-        </CCC>
-     </AAA>`
+	<AAA>
+		<BBB>
+			<DDD>
+				<CCC>
+					<DDD/>
+					<EEE/>
+				</CCC>
+			</DDD>
+		</BBB>
+		<CCC>
+			<DDD>
+				<EEE>
+					<DDD>
+						<FFF/>
+					</DDD>
+				</EEE>
+			</DDD>
+		</CCC>
+	 </AAA>`
 	root, err := Parse(strings.NewReader(s))
 	if err != nil {
 		t.Error(err)
@@ -663,5 +665,48 @@ func TestDirective(t *testing.T) {
 	list := Find(doc, `//*`)
 	if m := len(list); m != 4 {
 		t.Errorf("expected count is 4 but got %d", m)
+	}
+}
+
+func TestStreamParser_XPathStrictEOFOption(t *testing.T) {
+	// This test checks that passing StrictEOF to the stream parser causes an error on trailing garbage in the XPath expression.
+	xml := `<root><a>1</a><b>2</b></root>`
+
+	validXPath := "/root/a"
+	garbageXPath := "/root/a,foo" // trailing garbage after valid expr
+
+	// Without StrictEOF: should NOT error for garbageXPath
+	sp, err := CreateStreamParserWithCompileOptions(strings.NewReader(xml), ParserOptions{}, xpath.CompileOptions{}, garbageXPath)
+	if err != nil {
+		t.Fatalf("unexpected error without StrictEOF: %v", err)
+	}
+	_, err = sp.Read()
+	if err != nil && err != io.EOF {
+		t.Fatalf("unexpected error on Read() without StrictEOF: %v", err)
+	}
+
+	// With StrictEOF: should error for garbageXPath
+	sp, err = CreateStreamParserWithCompileOptions(strings.NewReader(xml), ParserOptions{}, xpath.CompileOptions{StrictEOF: true}, garbageXPath)
+	if err == nil {
+		_, err = sp.Read() // force evaluation if not already errored
+	}
+	if err == nil {
+		t.Fatal("expected error with StrictEOF and garbage XPath, but got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "unexpected token after end of expression") {
+		t.Fatalf("expected strict EOF error, got: %v", err)
+	}
+
+	// With StrictEOF: should NOT error for valid XPath
+	sp, err = CreateStreamParserWithCompileOptions(strings.NewReader(xml), ParserOptions{}, xpath.CompileOptions{StrictEOF: true}, validXPath)
+	if err != nil {
+		t.Fatalf("unexpected error with StrictEOF and valid XPath: %v", err)
+	}
+	n, err := sp.Read()
+	if err != nil && err != io.EOF {
+		t.Fatalf("unexpected error on Read() with StrictEOF and valid XPath: %v", err)
+	}
+	if n == nil || n.Data != "a" {
+		t.Fatalf("expected to find <a> node, got: %#v", n)
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/antchfx/xpath"
 )
 
 // https://msdn.microsoft.com/en-us/library/ms762271(v=vs.85).aspx
@@ -161,12 +163,76 @@ func loadXML(s string) *Node {
 }
 
 func TestMissingTextNodes(t *testing.T) {
-    doc := loadXML(`
+	doc := loadXML(`
         <?xml version="1.0" encoding="utf-8"?>
         <corpus><p>Lorem <a>ipsum</a> dolor</p></corpus>
     `)
-    results := Find(doc, "//text()")
-    if len(results) != 3 {
-        t.Fatalf("Expected text nodes 3, got %d", len(results))
-    }
+	results := Find(doc, "//text()")
+	if len(results) != 3 {
+		t.Fatalf("Expected text nodes 3, got %d", len(results))
+	}
+}
+
+func TestQueryWithOptions_XPathStrictEOFOption(t *testing.T) {
+	validXPath := "/catalog/book"
+	garbageXPath := "/catalog/book,foo" // trailing garbage after valid expr
+
+	// Without StrictEOF: should NOT error for garbageXPath
+	node, err := QueryWithOptions(doc, garbageXPath, xpath.CompileOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error without StrictEOF: %v", err)
+	}
+	if node == nil || node.Data != "book" {
+		t.Fatalf("expected to find <book> node, got: %#v", node)
+	}
+
+	// With StrictEOF: should error for garbageXPath
+	_, err = QueryWithOptions(doc, garbageXPath, xpath.CompileOptions{StrictEOF: true})
+	if err == nil {
+		t.Fatal("expected error with StrictEOF and garbage XPath, but got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "unexpected token after end of expression") {
+		t.Fatalf("expected strict EOF error, got: %v", err)
+	}
+
+	// With StrictEOF: should NOT error for valid XPath
+	node, err = QueryWithOptions(doc, validXPath, xpath.CompileOptions{StrictEOF: true})
+	if err != nil {
+		t.Fatalf("unexpected error with StrictEOF and valid XPath: %v", err)
+	}
+	if node == nil || node.Data != "book" {
+		t.Fatalf("expected to find <book> node, got: %#v", node)
+	}
+}
+
+func TestQueryAllWithOptions_XPathStrictEOFOption(t *testing.T) {
+	validXPath := "/catalog/book"
+	garbageXPath := "/catalog/book,foo" // trailing garbage after valid expr
+
+	// Without StrictEOF: should NOT error for garbageXPath
+	nodes, err := QueryAllWithOptions(doc, garbageXPath, xpath.CompileOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error without StrictEOF: %v", err)
+	}
+	if len(nodes) != 3 || nodes[0].Data != "book" || nodes[1].Data != "book" || nodes[2].Data != "book" {
+		t.Fatalf("expected to find three <book> nodes, got: %#v", nodes)
+	}
+
+	// With StrictEOF: should error for garbageXPath
+	_, err = QueryAllWithOptions(doc, garbageXPath, xpath.CompileOptions{StrictEOF: true})
+	if err == nil {
+		t.Fatal("expected error with StrictEOF and garbage XPath, but got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "unexpected token after end of expression") {
+		t.Fatalf("expected strict EOF error, got: %v", err)
+	}
+
+	// With StrictEOF: should NOT error for valid XPath
+	nodes, err = QueryAllWithOptions(doc, validXPath, xpath.CompileOptions{StrictEOF: true})
+	if err != nil {
+		t.Fatalf("unexpected error with StrictEOF and valid XPath: %v", err)
+	}
+	if len(nodes) != 3 || nodes[0].Data != "book" || nodes[1].Data != "book" || nodes[2].Data != "book" {
+		t.Fatalf("expected to find three <book> nodes, got: %#v", nodes)
+	}
 }

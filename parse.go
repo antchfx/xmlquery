@@ -372,7 +372,7 @@ type StreamParser struct {
 // streamElementFilter, if provided, cannot be successfully parsed and compiled
 // into a valid xpath query.
 func CreateStreamParser(r io.Reader, streamElementXPath string, streamElementFilter ...string) (*StreamParser, error) {
-	return CreateStreamParserWithOptions(r, ParserOptions{}, streamElementXPath, streamElementFilter...)
+	return CreateStreamParserWithCompileOptions(r, ParserOptions{}, xpath.CompileOptions{}, streamElementXPath, streamElementFilter...)
 }
 
 // CreateStreamParserWithOptions is like CreateStreamParser, but with custom options
@@ -382,13 +382,24 @@ func CreateStreamParserWithOptions(
 	streamElementXPath string,
 	streamElementFilter ...string,
 ) (*StreamParser, error) {
-	elemXPath, err := getQuery(streamElementXPath)
+	return CreateStreamParserWithCompileOptions(r, options, xpath.CompileOptions{}, streamElementXPath, streamElementFilter...)
+}
+
+// New function to allow passing CompileOptions
+func CreateStreamParserWithCompileOptions(
+	r io.Reader,
+	options ParserOptions,
+	compileOpts xpath.CompileOptions,
+	streamElementXPath string,
+	streamElementFilter ...string,
+) (*StreamParser, error) {
+	elemXPath, err := getQuery(streamElementXPath, compileOpts)
 	if err != nil {
 		return nil, fmt.Errorf("invalid streamElementXPath '%s', err: %s", streamElementXPath, err.Error())
 	}
 	elemFilter := (*xpath.Expr)(nil)
 	if len(streamElementFilter) > 0 {
-		elemFilter, err = getQuery(streamElementFilter[0])
+		elemFilter, err = getQuery(streamElementFilter[0], compileOpts)
 		if err != nil {
 			return nil, fmt.Errorf("invalid streamElementFilter '%s', err: %s", streamElementFilter[0], err.Error())
 		}
