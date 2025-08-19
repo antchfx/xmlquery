@@ -81,6 +81,7 @@ type parser struct {
 	once                sync.Once
 	space2prefix        map[string]*xmlnsPrefix
 	currentLine         int           // Track current line number during parsing
+	lastProcessedPos    int           // Track how much cached data we've already processed for line counting
 }
 
 type xmlnsPrefix struct {
@@ -91,11 +92,12 @@ type xmlnsPrefix struct {
 func createParser(r io.Reader) *parser {
 	reader := newCachedReader(bufio.NewReader(r))
 	p := &parser{
-		decoder:     xml.NewDecoder(reader),
-		doc:         &Node{Type: DocumentNode},
-		level:       0,
-		reader:      reader,
-		currentLine: 1,
+		decoder:          xml.NewDecoder(reader),
+		doc:              &Node{Type: DocumentNode},
+		level:            0,
+		reader:           reader,
+		currentLine:      0,
+		lastProcessedPos: 0,
 	}
 	if p.decoder.CharsetReader == nil {
 		p.decoder.CharsetReader = charset.NewReaderLabel
@@ -104,14 +106,19 @@ func createParser(r io.Reader) *parser {
 	return p
 }
 
-// updateLineNumber scans the cached data for newlines to update current line position
+// updateLineNumber scans only new cached data for newlines to update current line position
 func (p *parser) updateLineNumber() {
 	cached := p.reader.CacheWithLimit(-1) // Get all cached data
-	for _, b := range cached {
-		if b == '\n' {
+	
+	// Only process data we haven't seen before
+	for i := p.lastProcessedPos; i < len(cached); i++ {
+		if cached[i] == '\n' {
 			p.currentLine++
 		}
 	}
+	
+	// Update our position to avoid reprocessing this data
+	p.lastProcessedPos = len(cached)
 }
 
 func (p *parser) parse() (*Node, error) {
