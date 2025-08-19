@@ -665,3 +665,61 @@ func TestDirective(t *testing.T) {
 		t.Errorf("expected count is 4 but got %d", m)
 	}
 }
+
+func TestLineNumbers(t *testing.T) {
+	s := `<?xml version="1.0" encoding="UTF-8"?>
+<bookstore>
+<book id="1" 
+      category="fiction"
+      available="true">
+  <title lang="en">Harry Potter</title>
+  <price>29.99</price>
+</book>
+</bookstore>`
+	
+	doc, err := ParseWithLineNumbers(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test XML declaration line number
+	declaration := doc.FirstChild
+	if declaration.Type != DeclarationNode {
+		t.Fatal("first child should be declaration node")
+	}
+	if declaration.LineNumber != 1 {
+		t.Errorf("declaration should be on line 1, got line %d", declaration.LineNumber)
+	}
+
+	// Test root element line number
+	bookstore := doc.LastChild
+	if bookstore.Data != "bookstore" {
+		t.Fatal("root element should be bookstore")
+	}
+	if bookstore.LineNumber != 2 {
+		t.Errorf("bookstore should be on line 2, got line %d", bookstore.LineNumber)
+	}
+
+	// Test book element with multi-line attributes
+	book := FindOne(doc, "//book")
+	if book == nil {
+		t.Fatal("book element not found")
+	}
+	if book.LineNumber != 3 {
+		t.Errorf("book element should be on line 3, got line %d", book.LineNumber)
+	}
+
+	// Verify attributes are present
+	if len(book.Attr) != 3 {
+		t.Errorf("expected 3 attributes, got %d", len(book.Attr))
+	}
+
+	// Test title element
+	title := FindOne(book, "title")
+	if title == nil {
+		t.Fatal("title element not found")
+	}
+	if title.LineNumber != 6 {
+		t.Errorf("title should be on line 6, got line %d", title.LineNumber)
+	}
+}
