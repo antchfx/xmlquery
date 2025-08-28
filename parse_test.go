@@ -677,7 +677,7 @@ func TestLineNumbers(t *testing.T) {
 </book>
 </bookstore>`
 	
-	doc, err := ParseWithLineNumbers(strings.NewReader(s))
+	doc, err := ParseWithOptions(strings.NewReader(s), ParserOptions{WithLineNumbers: true})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -39,6 +39,27 @@ func Parse(r io.Reader) (*Node, error) {
 
 // ParseWithOptions is like parse, but with custom options
 func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
+	var data []byte
+	var lineStarts []int
+	
+	// If line numbers are requested, read all data for position tracking
+	if options.WithLineNumbers {
+		var err error
+		data, err = io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		r = bytes.NewReader(data)
+		
+		// Pre-calculate line starts
+		lineStarts = []int{0}
+		for i, b := range data {
+			if b == '\n' {
+				lineStarts = append(lineStarts, i+1)
+			}
+		}
+	}
+
 	p := createParser(r)
 	options.apply(p)
 	var err error
@@ -62,6 +83,20 @@ func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 		if !valid {
 			return nil, fmt.Errorf("xmlquery: invalid XML document")
 		}
+
+		// If line numbers were requested, annotate the parsed document
+		if options.WithLineNumbers {
+			annotator := &lineNumberAnnotator{
+				data:       data,
+				lineStarts: lineStarts,
+			}
+			
+			err = annotator.annotateLineNumbers(p.doc)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		return p.doc, nil
 	}
 
@@ -730,45 +765,7 @@ func (p *lineNumberAnnotator) findProcessingInstructionPosition(target string) i
 	return 1
 }
 
-// ParseWithLineNumbers returns the parse tree for the XML from the given Reader with line number annotations.
-func ParseWithLineNumbers(r io.Reader) (*Node, error) {
-	return ParseWithLineNumbersAndOptions(r, ParserOptions{})
-}
 
-// ParseWithLineNumbersAndOptions is like ParseWithLineNumbers, but with custom options
-func ParseWithLineNumbersAndOptions(r io.Reader, options ParserOptions) (*Node, error) {
-	// Read all data first so we can track positions
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse with the standard parser first
-	doc, err := ParseWithOptions(bytes.NewReader(data), options)
-	if err != nil {
-		return nil, err
-	}
-
-	// Now annotate with line numbers using the sophisticated algorithm
-	parser := &lineNumberAnnotator{
-		data:       data,
-		lineStarts: []int{0},
-	}
-
-	// Pre-calculate line starts
-	for i, b := range data {
-		if b == '\n' {
-			parser.lineStarts = append(parser.lineStarts, i+1)
-		}
-	}
-
-	err = parser.annotateLineNumbers(doc)
-	if err != nil {
-		return nil, err
-	}
-
-	return doc, nil
-}
 
 // LoadURLWithLineNumbers loads the XML document from the specified URL with line number annotations.
 func LoadURLWithLineNumbers(url string) (*Node, error) {
@@ -779,7 +776,7 @@ func LoadURLWithLineNumbers(url string) (*Node, error) {
 	defer resp.Body.Close()
 	
 	if xmlMIMERegex.MatchString(resp.Header.Get("Content-Type")) {
-		return ParseWithLineNumbers(resp.Body)
+		return ParseWithOptions(resp.Body, ParserOptions{WithLineNumbers: true})
 	}
 	return nil, fmt.Errorf("invalid XML document(%s)", resp.Header.Get("Content-Type"))
 }
