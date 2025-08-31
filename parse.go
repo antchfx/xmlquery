@@ -17,6 +17,7 @@ import (
 
 var xmlMIMERegex = regexp.MustCompile(`(?i)((application|image|message|model)/((\w|\.|-)+\+?)?|text/)(wb)?xml`)
 
+
 // LoadURL loads the XML document from the specified URL.
 func LoadURL(url string) (*Node, error) {
 	resp, err := http.Get(url)
@@ -38,6 +39,27 @@ func Parse(r io.Reader) (*Node, error) {
 
 // ParseWithOptions is like parse, but with custom options
 func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
+	var data []byte
+	var lineStarts []int
+	
+	// If line numbers are requested, read all data for position tracking
+	if options.WithLineNumbers {
+		var err error
+		data, err = io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		r = bytes.NewReader(data)
+		
+		// Pre-calculate line starts
+		lineStarts = []int{0}
+		for i, b := range data {
+			if b == '\n' {
+				lineStarts = append(lineStarts, i+1)
+			}
+		}
+	}
+
 	p := createParser(r)
 	options.apply(p)
 	var err error
@@ -61,6 +83,20 @@ func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 		if !valid {
 			return nil, fmt.Errorf("xmlquery: invalid XML document")
 		}
+
+		// If line numbers were requested, annotate the parsed document
+		if options.WithLineNumbers {
+			annotator := &lineNumberAnnotator{
+				data:       data,
+				lineStarts: lineStarts,
+			}
+			
+			err = annotator.annotateLineNumbers(p.doc)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		return p.doc, nil
 	}
 
@@ -79,6 +115,8 @@ type parser struct {
 	reader              *cachedReader // Need to maintain a reference to the reader, so we can determine whether a node contains CDATA.
 	once                sync.Once
 	space2prefix        map[string]*xmlnsPrefix
+	currentLine         int           // Track current line number during parsing
+	lastProcessedPos    int           // Track how much cached data we've already processed for line counting
 }
 
 type xmlnsPrefix struct {
@@ -89,16 +127,33 @@ type xmlnsPrefix struct {
 func createParser(r io.Reader) *parser {
 	reader := newCachedReader(bufio.NewReader(r))
 	p := &parser{
-		decoder: xml.NewDecoder(reader),
-		doc:     &Node{Type: DocumentNode},
-		level:   0,
-		reader:  reader,
+		decoder:          xml.NewDecoder(reader),
+		doc:              &Node{Type: DocumentNode},
+		level:            0,
+		reader:           reader,
+		currentLine:      0,
+		lastProcessedPos: 0,
 	}
 	if p.decoder.CharsetReader == nil {
 		p.decoder.CharsetReader = charset.NewReaderLabel
 	}
 	p.prev = p.doc
 	return p
+}
+
+// updateLineNumber scans only new cached data for newlines to update current line position
+func (p *parser) updateLineNumber() {
+	cached := p.reader.CacheWithLimit(-1) // Get all cached data
+	
+	// Only process data we haven't seen before
+	for i := p.lastProcessedPos; i < len(cached); i++ {
+		if cached[i] == '\n' {
+			p.currentLine++
+		}
+	}
+	
+	// Update our position to avoid reprocessing this data
+	p.lastProcessedPos = len(cached)
 }
 
 func (p *parser) parse() (*Node, error) {
@@ -111,6 +166,10 @@ func (p *parser) parse() (*Node, error) {
 		p.reader.StartCaching()
 		tok, err := p.decoder.Token()
 		p.reader.StopCaching()
+		
+		// Update line number based on processed content
+		p.updateLineNumber()
+		
 		if err != nil {
 			return nil, err
 		}
@@ -123,10 +182,11 @@ func (p *parser) parse() (*Node, error) {
 				attributes[0].Name = xml.Name{Local: "version"}
 				attributes[0].Value = "1.0"
 				node := &Node{
-					Type:  DeclarationNode,
-					Data:  "xml",
-					Attr:  attributes,
-					level: 1,
+					Type:       DeclarationNode,
+					Data:       "xml",
+					Attr:       attributes,
+					level:      1,
+					LineNumber: p.currentLine,
 				}
 				AddChild(p.prev, node)
 				p.level = 1
@@ -170,6 +230,7 @@ func (p *parser) parse() (*Node, error) {
 				NamespaceURI: tok.Name.Space,
 				Attr:         attributes,
 				level:        p.level,
+				LineNumber:   p.currentLine,
 			}
 
 			if p.level == p.prev.level {
@@ -250,7 +311,7 @@ func (p *parser) parse() (*Node, error) {
 			if bytes.HasPrefix(cached, []byte("<![CDATA[")) || bytes.HasPrefix(cached, []byte("![CDATA[")) {
 				nodeType = CharDataNode
 			}
-			node := &Node{Type: nodeType, Data: string(tok), level: p.level}
+			node := &Node{Type: nodeType, Data: string(tok), level: p.level, LineNumber: p.currentLine}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
@@ -262,7 +323,7 @@ func (p *parser) parse() (*Node, error) {
 				AddSibling(p.prev.Parent, node)
 			}
 		case xml.Comment:
-			node := &Node{Type: CommentNode, Data: string(tok), level: p.level}
+			node := &Node{Type: CommentNode, Data: string(tok), level: p.level, LineNumber: p.currentLine}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
@@ -277,7 +338,7 @@ func (p *parser) parse() (*Node, error) {
 			if p.prev.Type != DeclarationNode {
 				p.level++
 			}
-			node := &Node{Type: DeclarationNode, Data: tok.Target, level: p.level}
+			node := &Node{Type: DeclarationNode, Data: tok.Target, level: p.level, LineNumber: p.currentLine}
 			pairs := strings.Split(string(tok.Inst), " ")
 			for _, pair := range pairs {
 				pair = strings.TrimSpace(pair)
@@ -297,7 +358,7 @@ func (p *parser) parse() (*Node, error) {
 			}
 			p.prev = node
 		case xml.Directive:
-			node := &Node{Type: NotationNode, Data: string(tok), level: p.level}
+			node := &Node{Type: NotationNode, Data: string(tok), level: p.level, LineNumber: p.currentLine}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
@@ -427,4 +488,295 @@ func (sp *StreamParser) Read() (*Node, error) {
 		sp.p.streamNodePrev = nil
 	}
 	return sp.p.parse()
+}
+
+// lineNumberAnnotator handles post-processing line number annotation
+type lineNumberAnnotator struct {
+	data       []byte
+	lineStarts []int
+	tracker    *positionTracker
+}
+
+// getLineForPosition returns the line number for a given byte position
+func (p *lineNumberAnnotator) getLineForPosition(pos int) int {
+	if pos < 0 {
+		return 1
+	}
+	
+	line := 1
+	for i, start := range p.lineStarts {
+		if pos < start {
+			return i  // i is the line number (1-based because lineStarts[0] = 0 for line 1)
+		}
+		line = i + 1
+	}
+	return line
+}
+
+// annotateLineNumbers walks through the XML data and annotates nodes with line numbers
+func (p *lineNumberAnnotator) annotateLineNumbers(doc *Node) error {
+	// First reset all line numbers to ensure clean state
+	p.resetLineNumbers(doc)
+	// Use a simpler approach: walk through the document in order and match with positions
+	p.annotateNodesByPosition(doc)
+	return nil
+}
+
+// resetLineNumbers recursively resets all line numbers to 0
+func (p *lineNumberAnnotator) resetLineNumbers(node *Node) {
+	if node == nil {
+		return
+	}
+	node.LineNumber = 0
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		p.resetLineNumbers(child)
+	}
+}
+
+// annotateNodesByPosition recursively annotates nodes by finding their positions in source
+func (p *lineNumberAnnotator) annotateNodesByPosition(node *Node) {
+	if node == nil {
+		return
+	}
+	
+	// Annotate current node if not already done
+	if node.LineNumber == 0 {
+		switch node.Type {
+		case ElementNode:
+			node.LineNumber = p.findElementPosition(node.Data)
+		case CommentNode:
+			node.LineNumber = p.findCommentPosition(node.Data)
+		case DeclarationNode:
+			if node.Data == "xml" {
+				node.LineNumber = p.findDeclarationLine()
+			} else {
+				node.LineNumber = p.findProcessingInstructionPosition(node.Data)
+			}
+		case TextNode, CharDataNode:
+			text := strings.TrimSpace(node.Data)
+			if text != "" {
+				node.LineNumber = p.findTextPosition(text)
+			}
+		}
+	}
+	
+	// Recursively annotate children
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		p.annotateNodesByPosition(child)
+	}
+}
+
+// State to track positions as we traverse the document
+type positionTracker struct {
+	currentPos     int
+	elementCounts  map[string]int
+	commentCounts  map[string]int
+	textCounts     map[string]int
+}
+
+// findElementPosition finds the line number for the next occurrence of an element
+func (p *lineNumberAnnotator) findElementPosition(name string) int {
+	if p.tracker == nil {
+		p.tracker = &positionTracker{
+			elementCounts: make(map[string]int),
+			commentCounts: make(map[string]int),
+			textCounts:    make(map[string]int),
+		}
+	}
+	
+	p.tracker.elementCounts[name]++
+	return p.findNthElementOccurrence(name, p.tracker.elementCounts[name])
+}
+
+// findNthElementOccurrence finds the nth occurrence of an element
+func (p *lineNumberAnnotator) findNthElementOccurrence(name string, n int) int {
+	count := 0
+	pos := 0
+	dataStr := string(p.data)
+	
+	// Look for both prefixed and non-prefixed versions
+	patterns := []string{
+		fmt.Sprintf("<%s", name),     // <name
+		fmt.Sprintf(":%s", name),     // prefix:name
+	}
+	
+	for {
+		earliestPos := len(p.data)
+		foundPattern := ""
+		
+		// Find the earliest occurrence of any pattern
+		for _, pattern := range patterns {
+			foundPos := strings.Index(dataStr[pos:], pattern)
+			if foundPos >= 0 {
+				absolutePos := pos + foundPos
+				if absolutePos < earliestPos {
+					earliestPos = absolutePos
+					foundPattern = pattern
+				}
+			}
+		}
+		
+		if earliestPos == len(p.data) {
+			break // No more occurrences found
+		}
+		
+		// Validate the match
+		nextCharPos := earliestPos + len(foundPattern)
+		isValidMatch := false
+		
+		if foundPattern[0] == '<' {
+			// Direct element match like <name
+			if nextCharPos < len(p.data) {
+				ch := p.data[nextCharPos]
+				if ch == '>' || ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+					isValidMatch = true
+				}
+			}
+		} else {
+			// Namespace prefix match like :name
+			// Make sure it's preceded by < and some prefix
+			if earliestPos > 0 && nextCharPos < len(p.data) {
+				ch := p.data[nextCharPos]
+				if ch == '>' || ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+					// Look backwards to find the <
+					foundOpenTag := false
+					for i := earliestPos - 1; i >= 0; i-- {
+						if p.data[i] == '<' {
+							foundOpenTag = true
+							break
+						} else if p.data[i] == '>' {
+							break // Found closing tag first, not valid
+						}
+					}
+					if foundOpenTag {
+						isValidMatch = true
+					}
+				}
+			}
+		}
+		
+		if isValidMatch {
+			count++
+			if count == n {
+				// For namespace prefix matches, return the position of the <
+				if foundPattern[0] == ':' {
+					for i := earliestPos - 1; i >= 0; i-- {
+						if p.data[i] == '<' {
+							return p.getLineForPosition(i)
+						}
+					}
+				}
+				return p.getLineForPosition(earliestPos)
+			}
+		}
+		
+		pos = earliestPos + 1
+	}
+	
+	return 1
+}
+
+// findCommentPosition finds the line number for the next occurrence of a comment
+func (p *lineNumberAnnotator) findCommentPosition(content string) int {
+	if p.tracker == nil {
+		p.tracker = &positionTracker{
+			elementCounts: make(map[string]int),
+			commentCounts: make(map[string]int),
+			textCounts:    make(map[string]int),
+		}
+	}
+	
+	p.tracker.commentCounts[content]++
+	return p.findNthCommentOccurrence(content, p.tracker.commentCounts[content])
+}
+
+// findNthCommentOccurrence finds the nth occurrence of a comment
+func (p *lineNumberAnnotator) findNthCommentOccurrence(content string, n int) int {
+	pattern := fmt.Sprintf("<!--%s-->", content)
+	count := 0
+	pos := 0
+	
+	for {
+		foundPos := strings.Index(string(p.data[pos:]), pattern)
+		if foundPos < 0 {
+			break
+		}
+		count++
+		absolutePos := pos + foundPos
+		if count == n {
+			return p.getLineForPosition(absolutePos)
+		}
+		pos = absolutePos + len(pattern)
+	}
+	return 1
+}
+
+// findDeclarationLine finds the line number of the XML declaration
+func (p *lineNumberAnnotator) findDeclarationLine() int {
+	pattern := "<?xml"
+	pos := bytes.Index(p.data, []byte(pattern))
+	if pos >= 0 {
+		return p.getLineForPosition(pos)
+	}
+	return 1
+}
+
+// findTextPosition finds the line number for the next occurrence of text
+func (p *lineNumberAnnotator) findTextPosition(text string) int {
+	if p.tracker == nil {
+		p.tracker = &positionTracker{
+			elementCounts: make(map[string]int),
+			commentCounts: make(map[string]int),
+			textCounts:    make(map[string]int),
+		}
+	}
+	
+	p.tracker.textCounts[text]++
+	return p.findNthTextOccurrence(text, p.tracker.textCounts[text])
+}
+
+// findNthTextOccurrence finds the nth occurrence of text
+func (p *lineNumberAnnotator) findNthTextOccurrence(text string, n int) int {
+	count := 0
+	pos := 0
+	
+	for {
+		foundPos := strings.Index(string(p.data[pos:]), text)
+		if foundPos < 0 {
+			break
+		}
+		count++
+		absolutePos := pos + foundPos
+		if count == n {
+			return p.getLineForPosition(absolutePos)
+		}
+		pos = absolutePos + len(text)
+	}
+	return 1
+}
+
+// findProcessingInstructionPosition finds the line number for a processing instruction
+func (p *lineNumberAnnotator) findProcessingInstructionPosition(target string) int {
+	pattern := fmt.Sprintf("<?%s", target)
+	pos := strings.Index(string(p.data), pattern)
+	if pos >= 0 {
+		return p.getLineForPosition(pos)
+	}
+	return 1
+}
+
+
+
+// LoadURLWithLineNumbers loads the XML document from the specified URL with line number annotations.
+func LoadURLWithLineNumbers(url string) (*Node, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	
+	if xmlMIMERegex.MatchString(resp.Header.Get("Content-Type")) {
+		return ParseWithOptions(resp.Body, ParserOptions{WithLineNumbers: true})
+	}
+	return nil, fmt.Errorf("invalid XML document(%s)", resp.Header.Get("Content-Type"))
 }

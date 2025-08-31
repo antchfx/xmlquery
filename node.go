@@ -50,7 +50,8 @@ type Node struct {
 	NamespaceURI string
 	Attr         []Attr
 
-	level int // node level in the tree
+	level      int // node level in the tree
+	LineNumber int // line number where this node appears in the source XML
 }
 
 type outputConfiguration struct {
@@ -120,6 +121,11 @@ func newXMLName(name string) xml.Name {
 
 func (n *Node) Level() int {
 	return n.level
+}
+
+// GetLineNumber returns the line number where this node appears in the source XML.
+func (n *Node) GetLineNumber() int {
+	return n.LineNumber
 }
 
 // InnerText returns the text between the start and end tags of the object.
