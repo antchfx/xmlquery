@@ -765,17 +765,3 @@ func (p *lineNumberAnnotator) findProcessingInstructionPosition(target string) i
 	}
 	return 1
 }
-
-// LoadURLWithLineNumbers loads the XML document from the specified URL with line number annotations.
-func LoadURLWithLineNumbers(url string) (*Node, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if xmlMIMERegex.MatchString(resp.Header.Get("Content-Type")) {
-		return ParseWithOptions(resp.Body, ParserOptions{WithLineNumbers: true})
-	}
-	return nil, fmt.Errorf("invalid XML document(%s)", resp.Header.Get("Content-Type"))
-}
