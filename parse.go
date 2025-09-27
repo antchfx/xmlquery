@@ -17,7 +17,6 @@ import (
 
 var xmlMIMERegex = regexp.MustCompile(`(?i)((application|image|message|model)/((\w|\.|-)+\+?)?|text/)(wb)?xml`)
 
-
 // LoadURL loads the XML document from the specified URL.
 func LoadURL(url string) (*Node, error) {
 	resp, err := http.Get(url)
@@ -41,7 +40,7 @@ func Parse(r io.Reader) (*Node, error) {
 func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 	var data []byte
 	var lineStarts []int
-	
+
 	// If line numbers are requested, read all data for position tracking
 	if options.WithLineNumbers {
 		var err error
@@ -50,7 +49,7 @@ func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 			return nil, err
 		}
 		r = bytes.NewReader(data)
-		
+
 		// Pre-calculate line starts
 		lineStarts = []int{0}
 		for i, b := range data {
@@ -90,7 +89,7 @@ func ParseWithOptions(r io.Reader, options ParserOptions) (*Node, error) {
 				data:       data,
 				lineStarts: lineStarts,
 			}
-			
+
 			err = annotator.annotateLineNumbers(p.doc)
 			if err != nil {
 				return nil, err
@@ -115,8 +114,8 @@ type parser struct {
 	reader              *cachedReader // Need to maintain a reference to the reader, so we can determine whether a node contains CDATA.
 	once                sync.Once
 	space2prefix        map[string]*xmlnsPrefix
-	currentLine         int           // Track current line number during parsing
-	lastProcessedPos    int           // Track how much cached data we've already processed for line counting
+	currentLine         int // Track current line number during parsing
+	lastProcessedPos    int // Track how much cached data we've already processed for line counting
 }
 
 type xmlnsPrefix struct {
@@ -144,14 +143,14 @@ func createParser(r io.Reader) *parser {
 // updateLineNumber scans only new cached data for newlines to update current line position
 func (p *parser) updateLineNumber() {
 	cached := p.reader.CacheWithLimit(-1) // Get all cached data
-	
+
 	// Only process data we haven't seen before
 	for i := p.lastProcessedPos; i < len(cached); i++ {
 		if cached[i] == '\n' {
 			p.currentLine++
 		}
 	}
-	
+
 	// Update our position to avoid reprocessing this data
 	p.lastProcessedPos = len(cached)
 }
@@ -166,10 +165,10 @@ func (p *parser) parse() (*Node, error) {
 		p.reader.StartCaching()
 		tok, err := p.decoder.Token()
 		p.reader.StopCaching()
-		
+
 		// Update line number based on processed content
 		p.updateLineNumber()
-		
+
 		if err != nil {
 			return nil, err
 		}
@@ -335,7 +334,7 @@ func (p *parser) parse() (*Node, error) {
 				AddSibling(p.prev.Parent, node)
 			}
 		case xml.ProcInst: // Processing Instruction
-			if p.prev.Type != DeclarationNode {
+			if !(p.prev.Type == DeclarationNode || p.prev.Type == ProcessingInstruction) {
 				p.level++
 			}
 			node := &Node{Type: DeclarationNode, Data: tok.Target, level: p.level, LineNumber: p.currentLine}
@@ -345,6 +344,10 @@ func (p *parser) parse() (*Node, error) {
 				if i := strings.Index(pair, "="); i > 0 {
 					AddAttr(node, pair[:i], strings.Trim(pair[i+1:], `"'`))
 				}
+			}
+			if tok.Target != "xml" {
+				node.Type = ProcessingInstruction
+				node.ProcInst = &ProcInstData{Target: tok.Target, Inst: strings.TrimSpace(string(tok.Inst))}
 			}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
@@ -502,11 +505,11 @@ func (p *lineNumberAnnotator) getLineForPosition(pos int) int {
 	if pos < 0 {
 		return 1
 	}
-	
+
 	line := 1
 	for i, start := range p.lineStarts {
 		if pos < start {
-			return i  // i is the line number (1-based because lineStarts[0] = 0 for line 1)
+			return i // i is the line number (1-based because lineStarts[0] = 0 for line 1)
 		}
 		line = i + 1
 	}
@@ -538,7 +541,7 @@ func (p *lineNumberAnnotator) annotateNodesByPosition(node *Node) {
 	if node == nil {
 		return
 	}
-	
+
 	// Annotate current node if not already done
 	if node.LineNumber == 0 {
 		switch node.Type {
@@ -547,11 +550,9 @@ func (p *lineNumberAnnotator) annotateNodesByPosition(node *Node) {
 		case CommentNode:
 			node.LineNumber = p.findCommentPosition(node.Data)
 		case DeclarationNode:
-			if node.Data == "xml" {
-				node.LineNumber = p.findDeclarationLine()
-			} else {
-				node.LineNumber = p.findProcessingInstructionPosition(node.Data)
-			}
+			node.LineNumber = p.findDeclarationLine()
+		case ProcessingInstruction:
+			node.LineNumber = p.findProcessingInstructionPosition(node.Data)
 		case TextNode, CharDataNode:
 			text := strings.TrimSpace(node.Data)
 			if text != "" {
@@ -559,7 +560,7 @@ func (p *lineNumberAnnotator) annotateNodesByPosition(node *Node) {
 			}
 		}
 	}
-	
+
 	// Recursively annotate children
 	for child := node.FirstChild; child != nil; child = child.NextSibling {
 		p.annotateNodesByPosition(child)
@@ -568,10 +569,10 @@ func (p *lineNumberAnnotator) annotateNodesByPosition(node *Node) {
 
 // State to track positions as we traverse the document
 type positionTracker struct {
-	currentPos     int
-	elementCounts  map[string]int
-	commentCounts  map[string]int
-	textCounts     map[string]int
+	currentPos    int
+	elementCounts map[string]int
+	commentCounts map[string]int
+	textCounts    map[string]int
 }
 
 // findElementPosition finds the line number for the next occurrence of an element
@@ -583,7 +584,7 @@ func (p *lineNumberAnnotator) findElementPosition(name string) int {
 			textCounts:    make(map[string]int),
 		}
 	}
-	
+
 	p.tracker.elementCounts[name]++
 	return p.findNthElementOccurrence(name, p.tracker.elementCounts[name])
 }
@@ -593,17 +594,17 @@ func (p *lineNumberAnnotator) findNthElementOccurrence(name string, n int) int {
 	count := 0
 	pos := 0
 	dataStr := string(p.data)
-	
+
 	// Look for both prefixed and non-prefixed versions
 	patterns := []string{
-		fmt.Sprintf("<%s", name),     // <name
-		fmt.Sprintf(":%s", name),     // prefix:name
+		fmt.Sprintf("<%s", name), // <name
+		fmt.Sprintf(":%s", name), // prefix:name
 	}
-	
+
 	for {
 		earliestPos := len(p.data)
 		foundPattern := ""
-		
+
 		// Find the earliest occurrence of any pattern
 		for _, pattern := range patterns {
 			foundPos := strings.Index(dataStr[pos:], pattern)
@@ -615,15 +616,15 @@ func (p *lineNumberAnnotator) findNthElementOccurrence(name string, n int) int {
 				}
 			}
 		}
-		
+
 		if earliestPos == len(p.data) {
 			break // No more occurrences found
 		}
-		
+
 		// Validate the match
 		nextCharPos := earliestPos + len(foundPattern)
 		isValidMatch := false
-		
+
 		if foundPattern[0] == '<' {
 			// Direct element match like <name
 			if nextCharPos < len(p.data) {
@@ -654,7 +655,7 @@ func (p *lineNumberAnnotator) findNthElementOccurrence(name string, n int) int {
 				}
 			}
 		}
-		
+
 		if isValidMatch {
 			count++
 			if count == n {
@@ -669,10 +670,10 @@ func (p *lineNumberAnnotator) findNthElementOccurrence(name string, n int) int {
 				return p.getLineForPosition(earliestPos)
 			}
 		}
-		
+
 		pos = earliestPos + 1
 	}
-	
+
 	return 1
 }
 
@@ -685,7 +686,7 @@ func (p *lineNumberAnnotator) findCommentPosition(content string) int {
 			textCounts:    make(map[string]int),
 		}
 	}
-	
+
 	p.tracker.commentCounts[content]++
 	return p.findNthCommentOccurrence(content, p.tracker.commentCounts[content])
 }
@@ -695,7 +696,7 @@ func (p *lineNumberAnnotator) findNthCommentOccurrence(content string, n int) in
 	pattern := fmt.Sprintf("<!--%s-->", content)
 	count := 0
 	pos := 0
-	
+
 	for {
 		foundPos := strings.Index(string(p.data[pos:]), pattern)
 		if foundPos < 0 {
@@ -730,7 +731,7 @@ func (p *lineNumberAnnotator) findTextPosition(text string) int {
 			textCounts:    make(map[string]int),
 		}
 	}
-	
+
 	p.tracker.textCounts[text]++
 	return p.findNthTextOccurrence(text, p.tracker.textCounts[text])
 }
@@ -739,7 +740,7 @@ func (p *lineNumberAnnotator) findTextPosition(text string) int {
 func (p *lineNumberAnnotator) findNthTextOccurrence(text string, n int) int {
 	count := 0
 	pos := 0
-	
+
 	for {
 		foundPos := strings.Index(string(p.data[pos:]), text)
 		if foundPos < 0 {
@@ -765,8 +766,6 @@ func (p *lineNumberAnnotator) findProcessingInstructionPosition(target string) i
 	return 1
 }
 
-
-
 // LoadURLWithLineNumbers loads the XML document from the specified URL with line number annotations.
 func LoadURLWithLineNumbers(url string) (*Node, error) {
 	resp, err := http.Get(url)
@@ -774,7 +773,7 @@ func LoadURLWithLineNumbers(url string) (*Node, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if xmlMIMERegex.MatchString(resp.Header.Get("Content-Type")) {
 		return ParseWithOptions(resp.Body, ParserOptions{WithLineNumbers: true})
 	}

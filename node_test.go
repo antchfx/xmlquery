@@ -325,7 +325,7 @@ func TestRemoveFromTree(t *testing.T) {
 	t.Run("remove decl node works", func(t *testing.T) {
 		doc := parseXML()
 		procInst := doc.FirstChild
-		testValue(t, procInst.Type, DeclarationNode)
+		testValue(t, procInst.Type, ProcessingInstruction)
 		RemoveFromTree(procInst)
 		verifyNodePointers(t, doc)
 		testValue(t, doc.OutputXMLWithOptions(WithoutPreserveSpace()),
@@ -810,5 +810,41 @@ func TestOutputXMLWithSingleQuotes(t *testing.T) {
 	output := doc.OutputXML(false)
 	if expected != output {
 		t.Errorf(`expected "%s", obtained "%s"`, expected, output)
+	}
+}
+
+func TestProcessingInstruction(t *testing.T) {
+	xml := `<?ProcInstTag random string ?><?AnotherProcInst a="b"?><a/>`
+
+	doc, err := Parse(strings.NewReader(xml))
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	firstNode := doc.FirstChild
+	if firstNode.Type != ProcessingInstruction {
+		t.Errorf("First node type should be ProcessingInstruction, got %d", firstNode.Type)
+	}
+
+	piNode := FindOne(doc, "//ProcInstTag")
+	if piNode == nil {
+		t.Fatal("FindOne should be find one, but got nil")
+	}
+	if piNode.ProcInst == nil {
+		t.Fatal("ProcInstData is nil")
+	}
+
+	if piNode.ProcInst.Target != "ProcInstTag" {
+		t.Errorf("ProcInstData.Target mismatch: expected 'ProcInstTag', got '%s'", piNode.ProcInst.Target)
+	}
+
+	if piNode.ProcInst.Inst != "random string" {
+		t.Errorf("ProcInstData.Inst mismatch: expected 'random string', got '%s'", piNode.ProcInst.Inst)
+	}
+
+	output := doc.OutputXML(true)
+	expected := `<?ProcInstTag random string?><?AnotherProcInst a="b"?><a></a>`
+	if output != expected {
+		t.Errorf("Output mismatch:\nExpected: %s\nGot: %s", expected, output)
 	}
 }

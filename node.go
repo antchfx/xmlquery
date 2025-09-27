@@ -31,12 +31,20 @@ const (
 	AttributeNode
 	// NotationNode is a directive represents in document (for example, <!text...>).
 	NotationNode
+	// ProcessingInstruction represents an XML processing instruction (e.g., <?target instruction?>).
+	ProcessingInstruction
 )
 
 type Attr struct {
 	Name         xml.Name
 	Value        string
 	NamespaceURI string
+}
+
+// ProcInstData represents an XML processing instruction.
+type ProcInstData struct {
+	Target string
+	Inst   string
 }
 
 // A Node consists of a NodeType and some Data (tag name for
@@ -49,6 +57,7 @@ type Node struct {
 	Prefix       string
 	NamespaceURI string
 	Attr         []Attr
+	ProcInst     *ProcInstData
 
 	level      int // node level in the tree
 	LineNumber int // line number where this node appears in the source XML
@@ -261,6 +270,13 @@ func outputXML(w io.Writer, n *Node, preserveSpaces bool, config *outputConfigur
 		if err != nil {
 			return
 		}
+	case ProcessingInstruction:
+		if len(n.ProcInst.Inst) > 0 {
+			_, err = fmt.Fprintf(w, "<?%s %s?>", n.ProcInst.Target, n.ProcInst.Inst)
+		} else {
+			_, err = fmt.Fprintf(w, "<?%s?>", n.ProcInst.Target)
+		}
+		return
 	default:
 		if err = indent.Open(); err != nil {
 			return
