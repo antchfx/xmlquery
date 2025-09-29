@@ -343,10 +343,11 @@ func (p *parser) parse() (*Node, error) {
 				AddSibling(p.prev.Parent, node)
 			}
 		case xml.ProcInst: // Processing Instruction
-			if !(p.prev.Type == DeclarationNode || p.prev.Type == ProcessingInstruction) {
-				p.level++
+			level := p.level
+			if p.prev.Type != ElementNode && p.prev.Type != DeclarationNode && p.prev.Type != ProcessingInstruction {
+				level = p.level + 1
 			}
-			node := &Node{Type: DeclarationNode, Data: tok.Target, level: p.level, LineNumber: p.currentLine}
+			node := &Node{Type: DeclarationNode, Data: tok.Target, level: level, LineNumber: p.currentLine}
 			pairs := strings.Split(string(tok.Inst), " ")
 			for _, pair := range pairs {
 				pair = strings.TrimSpace(pair)
@@ -358,17 +359,18 @@ func (p *parser) parse() (*Node, error) {
 				node.Type = ProcessingInstruction
 				node.ProcInst = &ProcInstData{Target: tok.Target, Inst: strings.TrimSpace(string(tok.Inst))}
 			}
-			if p.level == p.prev.level {
+			if level == p.prev.level {
 				AddSibling(p.prev, node)
-			} else if p.level > p.prev.level {
+			} else if level > p.prev.level {
 				AddChild(p.prev, node)
-			} else if p.level < p.prev.level {
-				for i := p.prev.level - p.level; i > 1; i-- {
+			} else if level < p.prev.level {
+				for i := p.prev.level - level; i > 1; i-- {
 					p.prev = p.prev.Parent
 				}
 				AddSibling(p.prev.Parent, node)
 			}
 			p.prev = node
+			p.level = level
 		case xml.Directive:
 			node := &Node{Type: NotationNode, Data: string(tok), level: p.level, LineNumber: p.currentLine}
 			if p.level == p.prev.level {
