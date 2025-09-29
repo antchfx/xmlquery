@@ -676,7 +676,7 @@ func TestLineNumbers(t *testing.T) {
   <price>29.99</price>
 </book>
 </bookstore>`
-	
+
 	doc, err := ParseWithOptions(strings.NewReader(s), ParserOptions{WithLineNumbers: true})
 	if err != nil {
 		t.Fatal(err)
@@ -722,4 +722,32 @@ func TestLineNumbers(t *testing.T) {
 	if title.LineNumber != 6 {
 		t.Errorf("title should be on line 6, got line %d", title.LineNumber)
 	}
+}
+
+func TestProcessingInstructionStructure(t *testing.T) {
+	t.Run("Document1", func(t *testing.T) {
+		xml := `<?xml version="1.0" encoding="UTF-8"?><item><para>first</para><?xe-change-remove-start?><item><para>second</para></item></item>`
+		doc, err := Parse(strings.NewReader(xml))
+		if err != nil {
+			t.Fatalf("Failed to parse document1: %v", err)
+		}
+
+		output := doc.OutputXML(false)
+		if output != xml {
+			t.Errorf("Document1 output mismatch:\nExpected: %s\nGot: %s", xml, output)
+		}
+	})
+
+	t.Run("Document2", func(t *testing.T) {
+		xml := `<?xml version="1.0" encoding="UTF-8"?><list><item><para><?xe-change-remove-start?></para></item></list>`
+		doc, err := Parse(strings.NewReader(xml))
+		if err != nil {
+			t.Fatalf("Failed to parse document2: %v", err)
+		}
+
+		output := doc.OutputXML(false)
+		if output != xml {
+			t.Errorf("Document2 output mismatch:\nExpected: %s\nGot: %s", xml, output)
+		}
+	})
 }
