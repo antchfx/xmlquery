@@ -344,7 +344,7 @@ func (p *parser) parse() (*Node, error) {
 			}
 		case xml.ProcInst: // Processing Instruction
 			level := p.level
-			if p.prev.Type != ElementNode && p.prev.Type != DeclarationNode && p.prev.Type != ProcessingInstruction {
+			if p.prev.Type == DocumentNode {
 				level = p.level + 1
 			}
 			node := &Node{Type: DeclarationNode, Data: tok.Target, level: level, LineNumber: p.currentLine}
