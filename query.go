@@ -53,11 +53,13 @@ func getCurrentNode(it *xpath.NodeIterator) *Node {
 			Data: n.Value(),
 		}
 		return &Node{
-			Parent:     n.curr,
-			Type:       AttributeNode,
-			Data:       n.LocalName(),
-			FirstChild: childNode,
-			LastChild:  childNode,
+			Parent:       n.curr,
+			Type:         AttributeNode,
+			Data:         n.LocalName(),
+			Prefix:       n.Prefix(),
+			NamespaceURI: n.NamespaceURL(),
+			FirstChild:   childNode,
+			LastChild:    childNode,
 		}
 	}
 	return n.curr
