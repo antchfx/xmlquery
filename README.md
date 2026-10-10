@@ -219,6 +219,45 @@ options := xmlquery.ParserOptions{
 doc, err := xmlquery.ParseWithOptions(utf8Reader, options)
 ```
 
+### Parse non-ASCII characters and custom entity names.
+
+UTF-8 XML can contain characters such as `ä` directly, or use a numeric
+character reference such as `&#228;` or `&#xE4;`. These work with `Parse()`.
+HTML entity names such as `&auml;` are not predefined in XML, so `Parse()`
+reports an unknown entity. A character encoding conversion does not define
+those entity names.
+
+If the input uses known custom names, provide their replacements through
+`DecoderOptions.Entity`:
+
+```go
+s := `<name>&auml; &amp; &#228;</name>`
+options := xmlquery.ParserOptions{
+	Decoder: &xmlquery.DecoderOptions{
+		Strict: true,
+		Entity: map[string]string{"auml": "ä"},
+	},
+}
+doc, err := xmlquery.ParseWithOptions(strings.NewReader(s), options)
+if err != nil {
+	panic(err)
+}
+fmt.Println(xmlquery.FindOne(doc, "//name").InnerText()) // ä & ä
+```
+
+Set `Strict: true` explicitly when supplying `DecoderOptions`: its zero value
+is false, unlike the default XML decoder. This keeps malformed XML and unknown
+entity names as errors. The entity map above defines only `auml`; it does not
+load an HTML entity set or declarations from a DTD.
+
+For XML bytes in another character encoding, such as ISO-8859-1, use
+`DecoderOptions.CharsetReader`. `Parse()` already uses
+`golang.org/x/net/html/charset.NewReaderLabel` for an XML encoding declaration.
+Supplying `DecoderOptions` replaces these decoder defaults, so when combining
+custom entities with a non-UTF-8 document, also set
+`CharsetReader: charset.NewReaderLabel` (from `golang.org/x/net/html/charset`).
+An entity map and a charset reader solve different problems.
+
 ### Query with custom namespace prefix.
 
 ```go
