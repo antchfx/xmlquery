@@ -44,6 +44,27 @@ const xmlDoc = `
 
 var doc = loadXML(xmlDoc)
 
+func TestQueryAttributeNamespace(t *testing.T) {
+	root, err := Parse(strings.NewReader(`<root xmlns:xlink="http://www.w3.org/1999/xlink"><node xlink:href="target" id="plain"/></root>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		expr, prefix, namespace, data, value string
+	}{
+		{"//@xlink:href", "xlink", "http://www.w3.org/1999/xlink", "href", "target"},
+		{"//@id", "", "", "id", "plain"},
+	} {
+		node, err := Query(root, tc.expr)
+		if err != nil || node == nil {
+			t.Fatalf("Query(%q) = %v, %v", tc.expr, node, err)
+		}
+		if node.Prefix != tc.prefix || node.NamespaceURI != tc.namespace || node.Data != tc.data || node.InnerText() != tc.value {
+			t.Errorf("Query(%q) = prefix %q, namespace %q, data %q, value %q", tc.expr, node.Prefix, node.NamespaceURI, node.Data, node.InnerText())
+		}
+	}
+}
+
 func TestXPath(t *testing.T) {
 	if list := Find(doc, "//book"); len(list) != 3 {
 		t.Fatal("count(//book) != 3")
