@@ -377,7 +377,11 @@ func (n *Node) WriteWithOptions(writer io.Writer, opts ...OutputOption) (err err
 	pastPreserveSpaces := config.preserveSpaces
 	preserveSpaces := calculatePreserveSpaces(n, pastPreserveSpaces)
 	b := bufio.NewWriter(writer)
-	defer b.Flush()
+	defer func() {
+		if flushErr := b.Flush(); err == nil {
+			err = flushErr
+		}
+	}()
 
 	ident := newIndentation(config.useIndentation, b)
 	if config.printSelf && n.Type != DocumentNode {

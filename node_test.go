@@ -2,7 +2,9 @@ package xmlquery
 
 import (
 	"encoding/xml"
+	"errors"
 	"html"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -561,6 +563,93 @@ func TestWriteWithNamespacePrefix(t *testing.T) {
 	testTrue(t, err == nil)
 	if s != b.String() {
 		t.Fatal("xml document missing some characters")
+	}
+}
+
+type xmlWriterFunc func([]byte) (int, error)
+
+func (w xmlWriterFunc) Write(p []byte) (int, error) {
+	return w(p)
+}
+
+func TestWriteErrors(t *testing.T) {
+	writeErr := errors.New("write failed")
+	for _, size := range []struct {
+		name string
+		text string
+	}{
+		{"buffered", "value"},
+		{"large", strings.Repeat("x", 8192)},
+	} {
+		t.Run(size.name, func(t *testing.T) {
+			doc, err := Parse(strings.NewReader("<root><child>" + size.text + "</child><empty/></root>"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			root := doc.SelectElement("root")
+			if root == nil {
+				t.Fatal("root element not found")
+			}
+			children := "<child>" + size.text + "</child><empty></empty>"
+			whole := "<root>" + children + "</root>"
+			declaration := `<?xml version="1.0"?>`
+			indentedChildren := "\n<child>" + size.text + "</child>\n<empty></empty>"
+			indentedWhole := "\n<root>\n  <child>" + size.text + "</child>\n  <empty></empty>\n</root>"
+			for _, mode := range []struct {
+				name  string
+				write func(io.Writer) error
+				want  string
+			}{
+				{"document self", func(w io.Writer) error { return doc.Write(w, true) }, declaration + whole},
+				{"document children", func(w io.Writer) error { return doc.Write(w, false) }, declaration + whole},
+				{"element self", func(w io.Writer) error { return root.Write(w, true) }, whole},
+				{"element children", func(w io.Writer) error { return root.Write(w, false) }, children},
+				{"indented document", func(w io.Writer) error { return doc.WriteWithOptions(w, WithIndentation("  ")) }, declaration + indentedWhole},
+				{"indented element", func(w io.Writer) error { return root.WriteWithOptions(w, WithOutputSelf(), WithIndentation("  ")) }, indentedWhole},
+				{"indented children", func(w io.Writer) error { return root.WriteWithOptions(w, WithIndentation("  ")) }, indentedChildren},
+			} {
+				t.Run(mode.name, func(t *testing.T) {
+					for _, writer := range []struct {
+						name    string
+						limit   int
+						err     error
+						wantErr error
+					}{
+						{"success", -1, nil, nil},
+						{"error", 0, writeErr, writeErr},
+						{"partial error", 2, writeErr, writeErr},
+						{"short write", 2, nil, io.ErrShortWrite},
+					} {
+						t.Run(writer.name, func(t *testing.T) {
+							var output strings.Builder
+							calls := 0
+							err := mode.write(xmlWriterFunc(func(p []byte) (int, error) {
+								calls++
+								n := len(p)
+								if writer.limit >= 0 && n > writer.limit {
+									n = writer.limit
+								}
+								output.Write(p[:n])
+								return n, writer.err
+							}))
+							if err != writer.wantErr {
+								t.Fatalf("expected error %v, got %v", writer.wantErr, err)
+							}
+							want := mode.want
+							if writer.wantErr != nil {
+								want = want[:writer.limit]
+								if calls != 1 {
+									t.Errorf("expected one write attempt, got %d", calls)
+								}
+							}
+							if output.String() != want {
+								t.Errorf("expected output %q, got %q", want, output.String())
+							}
+						})
+					}
+				})
+			}
+		})
 	}
 }
 
