@@ -848,3 +848,27 @@ func TestProcessingInstruction(t *testing.T) {
 		t.Errorf("Output mismatch:\nExpected: %s\nGot: %s", expected, output)
 	}
 }
+
+func TestOutputXMLKeepsWhitespaceCharacters(t *testing.T) {
+	s := `<a x="tab&#9;nl&#10;cr&#13;end" xml:space="preserve">one&#13;two</a>`
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := FindOne(doc, "//a")
+	if got, want := a.SelectAttr("x"), "tab\tnl\ncr\rend"; got != want {
+		t.Fatalf("attribute: got %q, want %q", got, want)
+	}
+
+	reparsed, err := Parse(strings.NewReader(doc.OutputXML(true)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := FindOne(reparsed, "//a")
+	if got, want := b.SelectAttr("x"), a.SelectAttr("x"); got != want {
+		t.Errorf("attribute after round trip: got %q, want %q", got, want)
+	}
+	if got, want := b.InnerText(), a.InnerText(); got != want {
+		t.Errorf("text after round trip: got %q, want %q", got, want)
+	}
+}
