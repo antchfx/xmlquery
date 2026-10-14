@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/xml"
 	"fmt"
-	"html"
 	"io"
 	"strings"
 )
@@ -245,11 +244,25 @@ func (i *indentation) writeIndent() (err error) {
 	return
 }
 
+// textEscaper escapes text like html.EscapeString, and also escapes carriage
+// returns, which an XML parser would otherwise read back as newlines.
+var textEscaper = strings.NewReplacer(
+	`&`, "&amp;", `'`, "&#39;", `<`, "&lt;", `>`, "&gt;", `"`, "&#34;",
+	"\r", "&#13;",
+)
+
+// attrEscaper escapes attribute values like textEscaper, and also escapes
+// tabs and newlines, which an XML parser would otherwise read back as spaces.
+var attrEscaper = strings.NewReplacer(
+	`&`, "&amp;", `'`, "&#39;", `<`, "&lt;", `>`, "&gt;", `"`, "&#34;",
+	"\t", "&#9;", "\n", "&#10;", "\r", "&#13;",
+)
+
 func outputXML(w io.Writer, n *Node, preserveSpaces bool, config *outputConfiguration, indent *indentation) (err error) {
 	preserveSpaces = calculatePreserveSpaces(n, preserveSpaces)
 	switch n.Type {
 	case TextNode:
-		_, err = io.WriteString(w, html.EscapeString(n.sanitizedData(preserveSpaces)))
+		_, err = io.WriteString(w, textEscaper.Replace(n.sanitizedData(preserveSpaces)))
 		return
 	case CharDataNode:
 		_, err = fmt.Fprintf(w, "<![CDATA[%v]]>", n.Data)
@@ -301,7 +314,7 @@ func outputXML(w io.Writer, n *Node, preserveSpaces bool, config *outputConfigur
 			return
 		}
 
-		_, err = fmt.Fprintf(w, `"%v"`, html.EscapeString(attr.Value))
+		_, err = fmt.Fprintf(w, `"%v"`, attrEscaper.Replace(attr.Value))
 		if err != nil {
 			return
 		}
