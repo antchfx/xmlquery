@@ -724,6 +724,21 @@ func TestLineNumbers(t *testing.T) {
 	}
 }
 
+func TestLineNumberForMultilineText(t *testing.T) {
+	s := "<root>first line\nsecond line</root>"
+	doc, err := ParseWithOptions(strings.NewReader(s), ParserOptions{WithLineNumbers: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := doc.LastChild.FirstChild
+	if text.Type != TextNode {
+		t.Fatalf("expected text node, got %v", text.Type)
+	}
+	if text.LineNumber != 1 {
+		t.Errorf("text starts on line 1, got line %d", text.LineNumber)
+	}
+}
+
 func TestProcessingInstructionStructure(t *testing.T) {
 	t.Run("Document1", func(t *testing.T) {
 		xml := `<?xml version="1.0" encoding="UTF-8"?><item><para>first</para><?xe-change-remove-start?><item><para>second</para></item></item>`

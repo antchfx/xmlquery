@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -104,10 +105,7 @@ type parser struct {
 	reader              *cachedReader // Need to maintain a reference to the reader, so we can determine whether a node contains CDATA.
 	once                sync.Once
 	space2prefix        map[string]*xmlnsPrefix
-	currentLine         int // Track current line number during parsing
-	lastProcessedPos    int // Track how much cached data we've already processed for line counting
-
-	lineStarts []int
+	lineStarts          []int
 }
 
 type xmlnsPrefix struct {
@@ -118,13 +116,11 @@ type xmlnsPrefix struct {
 func createParser(r io.Reader) *parser {
 	reader := newCachedReader(bufio.NewReader(r))
 	p := &parser{
-		decoder:          xml.NewDecoder(reader),
-		doc:              &Node{Type: DocumentNode},
-		level:            0,
-		reader:           reader,
-		currentLine:      0,
-		lastProcessedPos: 0,
-		lineStarts:       nil,
+		decoder:    xml.NewDecoder(reader),
+		doc:        &Node{Type: DocumentNode},
+		level:      0,
+		reader:     reader,
+		lineStarts: nil,
 	}
 	if p.decoder.CharsetReader == nil {
 		p.decoder.CharsetReader = charset.NewReaderLabel
@@ -133,35 +129,14 @@ func createParser(r io.Reader) *parser {
 	return p
 }
 
-// updateLineNumber scans only new cached data for newlines to update current line position
-func (p *parser) updateLineNumber() {
-	if p.lineStarts == nil {
-		return
+// lineNumberAtOffset returns the 1-based source line at the start of a token.
+func (p *parser) lineNumberAtOffset(offset int64) int {
+	if len(p.lineStarts) == 0 {
+		return 0
 	}
-	offset := int(p.decoder.InputOffset())
-	for i := p.currentLine; i < len(p.lineStarts); i++ {
-		if offset > p.lineStarts[i] && p.lineStarts[i] >= p.lastProcessedPos {
-			p.currentLine = i + 1
-			break
-		}
-		if offset <= p.lineStarts[i] {
-			break
-		}
-	}
-	p.lastProcessedPos = offset
-	/*
-		cached := p.reader.CacheWithLimit(-1) // Get all cached data
-
-		// Only process data we haven't seen before
-		for i := p.lastProcessedPos; i < len(cached); i++ {
-			if cached[i] == '\n' {
-				p.currentLine++
-			}
-		}
-
-		// Update our position to avoid reprocessing this data
-		p.lastProcessedPos = len(cached)
-	*/
+	return sort.Search(len(p.lineStarts), func(i int) bool {
+		return int64(p.lineStarts[i]) > offset
+	})
 }
 
 func (p *parser) parse() (*Node, error) {
@@ -172,11 +147,9 @@ func (p *parser) parse() (*Node, error) {
 	var streamElementNodeCounter int
 	for {
 		p.reader.StartCaching()
+		lineNumber := p.lineNumberAtOffset(p.decoder.InputOffset())
 		tok, err := p.decoder.Token()
 		p.reader.StopCaching()
-
-		// Update line number based on processed content
-		p.updateLineNumber()
 
 		if err != nil {
 			return nil, err
@@ -194,7 +167,7 @@ func (p *parser) parse() (*Node, error) {
 					Data:       "xml",
 					Attr:       attributes,
 					level:      1,
-					LineNumber: p.currentLine,
+					LineNumber: lineNumber,
 				}
 				AddChild(p.prev, node)
 				p.level = 1
@@ -238,7 +211,7 @@ func (p *parser) parse() (*Node, error) {
 				NamespaceURI: tok.Name.Space,
 				Attr:         attributes,
 				level:        p.level,
-				LineNumber:   p.currentLine,
+				LineNumber:   lineNumber,
 			}
 
 			if p.level == p.prev.level {
@@ -319,7 +292,7 @@ func (p *parser) parse() (*Node, error) {
 			if bytes.HasPrefix(cached, []byte("<![CDATA[")) || bytes.HasPrefix(cached, []byte("![CDATA[")) {
 				nodeType = CharDataNode
 			}
-			node := &Node{Type: nodeType, Data: string(tok), level: p.level, LineNumber: p.currentLine}
+			node := &Node{Type: nodeType, Data: string(tok), level: p.level, LineNumber: lineNumber}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
@@ -331,7 +304,7 @@ func (p *parser) parse() (*Node, error) {
 				AddSibling(p.prev.Parent, node)
 			}
 		case xml.Comment:
-			node := &Node{Type: CommentNode, Data: string(tok), level: p.level, LineNumber: p.currentLine}
+			node := &Node{Type: CommentNode, Data: string(tok), level: p.level, LineNumber: lineNumber}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
@@ -347,7 +320,7 @@ func (p *parser) parse() (*Node, error) {
 			if p.prev.Type == DocumentNode {
 				level = p.level + 1
 			}
-			node := &Node{Type: DeclarationNode, Data: tok.Target, level: level, LineNumber: p.currentLine}
+			node := &Node{Type: DeclarationNode, Data: tok.Target, level: level, LineNumber: lineNumber}
 			pairs := strings.Split(string(tok.Inst), " ")
 			for _, pair := range pairs {
 				pair = strings.TrimSpace(pair)
@@ -372,7 +345,7 @@ func (p *parser) parse() (*Node, error) {
 			p.prev = node
 			p.level = level
 		case xml.Directive:
-			node := &Node{Type: NotationNode, Data: string(tok), level: p.level, LineNumber: p.currentLine}
+			node := &Node{Type: NotationNode, Data: string(tok), level: p.level, LineNumber: lineNumber}
 			if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
