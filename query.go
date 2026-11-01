@@ -234,11 +234,16 @@ func (x *NodeNavigator) MoveToParent() bool {
 }
 
 func (x *NodeNavigator) MoveToNextAttribute() bool {
-	if x.attr >= len(x.curr.Attr)-1 {
-		return false
+	for i := x.attr + 1; i < len(x.curr.Attr); i++ {
+		name := x.curr.Attr[i].Name
+		// xmlns declarations belong to the XPath namespace axis, not @*.
+		if name.Space == "xmlns" || (name.Space == "" && name.Local == "xmlns") {
+			continue
+		}
+		x.attr = i
+		return true
 	}
-	x.attr++
-	return true
+	return false
 }
 
 func (x *NodeNavigator) MoveToChild() bool {
