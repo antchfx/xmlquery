@@ -105,6 +105,7 @@ type parser struct {
 	reader              *cachedReader // Need to maintain a reference to the reader, so we can determine whether a node contains CDATA.
 	once                sync.Once
 	space2prefix        map[string]*xmlnsPrefix
+	prefixScopes        []map[string]*xmlnsPrefix
 	lineStarts          []int
 }
 
@@ -174,17 +175,31 @@ func (p *parser) parse() (*Node, error) {
 				p.prev = node
 			}
 
+			// Namespace aliases declared by this element apply only in its subtree.
+			var previous map[string]*xmlnsPrefix
+			remember := func(space string) {
+				if previous == nil {
+					previous = make(map[string]*xmlnsPrefix)
+				}
+				if _, recorded := previous[space]; !recorded {
+					previous[space] = p.space2prefix[space]
+				}
+			}
 			for _, att := range tok.Attr {
 				if att.Name.Local == "xmlns" {
 					// https://github.com/antchfx/xmlquery/issues/67
 					if prefix, ok := p.space2prefix[att.Value]; !ok || (ok && prefix.level >= p.level) {
+						remember(att.Value)
 						p.space2prefix[att.Value] = &xmlnsPrefix{name: "", level: p.level} // reset empty if exist the default namespace
 					}
 				} else if att.Name.Space == "xmlns" {
 					// maybe there are have duplicate NamespaceURL?
+					remember(att.Value)
 					p.space2prefix[att.Value] = &xmlnsPrefix{name: att.Name.Local, level: p.level}
 				}
 			}
+
+			p.prefixScopes = append(p.prefixScopes, previous)
 
 			if space := tok.Name.Space; space != "" {
 				if _, found := p.space2prefix[space]; !found && p.decoder.Strict {
@@ -252,6 +267,17 @@ func (p *parser) parse() (*Node, error) {
 			p.level++
 		case xml.EndElement:
 			p.level--
+			if last := len(p.prefixScopes) - 1; last >= 0 {
+				for space, prefix := range p.prefixScopes[last] {
+					if prefix == nil {
+						delete(p.space2prefix, space)
+					} else {
+						p.space2prefix[space] = prefix
+					}
+				}
+				p.prefixScopes[last] = nil
+				p.prefixScopes = p.prefixScopes[:last]
+			}
 			// If we're in streaming mode, and we already have a potential streaming
 			// target node identified (p.streamNode != nil) then we need to check if
 			// this is the real one we want to return to caller.
