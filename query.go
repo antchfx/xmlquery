@@ -207,8 +207,10 @@ func (x *NodeNavigator) Value() string {
 			return x.curr.Attr[x.attr].Value
 		}
 		return x.curr.InnerText()
-	case TextNode:
+	case TextNode, CharDataNode:
 		return x.curr.Data
+	case DocumentNode:
+		return x.curr.InnerText()
 	}
 	return ""
 }
