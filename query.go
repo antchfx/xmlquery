@@ -220,6 +220,7 @@ func (x *NodeNavigator) Copy() xpath.NodeNavigator {
 
 func (x *NodeNavigator) MoveToRoot() {
 	x.curr = x.root
+	x.attr = -1
 }
 
 func (x *NodeNavigator) MoveToParent() bool {
