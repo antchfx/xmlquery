@@ -6,6 +6,7 @@ package xmlquery
 import (
 	"fmt"
 	"strings"
+	"unsafe"
 
 	"github.com/antchfx/xpath"
 )
@@ -251,6 +252,7 @@ func (x *NodeNavigator) MoveToNextAttribute() bool {
 
 func (x *NodeNavigator) MoveToChild() bool {
 	if x.attr != -1 {
+		x.attr = -1
 		return false
 	}
 	if node := x.curr.FirstChild; node != nil {
@@ -261,7 +263,10 @@ func (x *NodeNavigator) MoveToChild() bool {
 }
 
 func (x *NodeNavigator) MoveToFirst() bool {
-	if x.attr != -1 || x.curr.PrevSibling == nil {
+	if x.attr != -1 {
+		x.attr = -1
+		return false
+	} else if x.curr.PrevSibling == nil {
 		return false
 	}
 	for {
@@ -280,6 +285,7 @@ func (x *NodeNavigator) String() string {
 
 func (x *NodeNavigator) MoveToNext() bool {
 	if x.attr != -1 {
+		x.attr = -1
 		return false
 	}
 	for node := x.curr.NextSibling; node != nil; node = x.curr.NextSibling {
@@ -293,6 +299,7 @@ func (x *NodeNavigator) MoveToNext() bool {
 
 func (x *NodeNavigator) MoveToPrevious() bool {
 	if x.attr != -1 {
+		x.attr = -1
 		return false
 	}
 	for node := x.curr.PrevSibling; node != nil; node = x.curr.PrevSibling {
@@ -313,4 +320,11 @@ func (x *NodeNavigator) MoveTo(other xpath.NodeNavigator) bool {
 	x.curr = node.curr
 	x.attr = node.attr
 	return true
+}
+
+func (x *NodeNavigator) Identity() uint64 {
+	if x.attr != -1 {
+		return uint64(uintptr(unsafe.Pointer(&x.curr.Attr[x.attr])))
+	}
+	return uint64(uintptr(unsafe.Pointer(x.curr)))
 }
