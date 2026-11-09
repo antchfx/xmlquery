@@ -331,7 +331,15 @@ func (p *parser) parse() (*Node, error) {
 			}
 		case xml.Comment:
 			node := &Node{Type: CommentNode, Data: string(tok), level: p.level, LineNumber: lineNumber}
-			if p.level == p.prev.level {
+			if p.prev.Type == DocumentNode {
+				// Before any declaration or element the comment belongs to the
+				// document, like a processing instruction in that position.
+				// Attaching it as a sibling of the document node would lose it.
+				node.level = 1
+				AddChild(p.prev, node)
+				p.prev = node
+				p.level = 1
+			} else if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
 				AddChild(p.prev, node)
@@ -372,7 +380,14 @@ func (p *parser) parse() (*Node, error) {
 			p.level = level
 		case xml.Directive:
 			node := &Node{Type: NotationNode, Data: string(tok), level: p.level, LineNumber: lineNumber}
-			if p.level == p.prev.level {
+			if p.prev.Type == DocumentNode {
+				// Same as for a comment: a DOCTYPE before any declaration or
+				// element is a child of the document, not a sibling of it.
+				node.level = 1
+				AddChild(p.prev, node)
+				p.prev = node
+				p.level = 1
+			} else if p.level == p.prev.level {
 				AddSibling(p.prev, node)
 			} else if p.level > p.prev.level {
 				AddChild(p.prev, node)
