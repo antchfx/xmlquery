@@ -766,3 +766,52 @@ func TestProcessingInstructionStructure(t *testing.T) {
 		}
 	})
 }
+
+func TestLeadingCommentAndDoctypeWithoutDeclaration(t *testing.T) {
+	// Without an XML declaration, a comment or DOCTYPE before the document
+	// element was attached as a sibling of the document node and lost.
+	s := `<!-- a --><!DOCTYPE r><!-- b --><r><!-- c --></r><!-- d -->`
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var types []NodeType
+	for n := doc.FirstChild; n != nil; n = n.NextSibling {
+		types = append(types, n.Type)
+	}
+	want := []NodeType{CommentNode, NotationNode, CommentNode, ElementNode, CommentNode}
+	if len(types) != len(want) {
+		t.Fatalf("expected document children %v, got %v", want, types)
+	}
+	for i := range want {
+		if types[i] != want[i] {
+			t.Fatalf("expected document children %v, got %v", want, types)
+		}
+	}
+	if got := doc.OutputXML(true); got != s {
+		t.Errorf("expected %s, got %s", s, got)
+	}
+	if n := len(Find(doc, "//comment()")); n != 4 {
+		t.Errorf("expected 4 comments, got %d", n)
+	}
+	if n := FindOne(doc, "/r"); n == nil || n.FirstChild == nil || n.FirstChild.Type != CommentNode {
+		t.Errorf("expected /r to keep its comment child")
+	}
+}
+
+func TestLeadingCommentWithWhitespace(t *testing.T) {
+	s := "<!--x-->\r\n<a>t</a>\n"
+	doc, err := Parse(strings.NewReader(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc.FirstChild == nil || doc.FirstChild.Type != CommentNode || doc.FirstChild.Data != "x" {
+		t.Fatalf("expected the leading comment as the first document child, got %v", doc.OutputXML(true))
+	}
+	if got, want := doc.FirstChild.NextSibling.NextSibling.Data, "a"; got != want {
+		t.Errorf("expected the element after the comment and the whitespace, got %q", got)
+	}
+	if got := FindOne(doc, "/a").InnerText(); got != "t" {
+		t.Errorf("expected t, got %q", got)
+	}
+}
